@@ -4,7 +4,16 @@
       "mcp__web-reader__webReader",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm whoami:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm view @hunghoang3011/minimax-coding-helper)",
+      "Bash(npm view:*)",
+      "Bash(npm pack:*)",
+      "Bash(npx:*)",
+      "Bash(npm x --yes -- @hunghoang3011/minimax-coding-helper --help)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

@@ -11,6 +11,7 @@ import {
   authPath
 } from './commands/auth.js';
 import { runDoctor } from './commands/doctor.js';
+import { configMenu } from './commands/config.js';
 
 const program = new Command();
 
@@ -106,6 +107,19 @@ program
   .action(async () => {
     try {
       await runDoctor();
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+// Config command - interactive menu
+program
+  .command('config')
+  .description('Interactive configuration menu')
+  .action(async () => {
+    try {
+      await configMenu();
     } catch (error) {
       console.error(chalk.red('Error:'), error);
       process.exit(1);
