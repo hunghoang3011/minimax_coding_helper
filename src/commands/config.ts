@@ -7,37 +7,36 @@ import { logger, printBox } from '../utils/logger.js';
 export async function configMenu(): Promise<void> {
   console.clear();
 
-  printBox([
-    chalk.bold.cyan('MiniMax Configuration Manager'),
-    '',
-    'Manage your MiniMax configuration for Claude Code',
-    'Press ^C at any time to quit'
-  ]);
-
+  // Beautiful header
+  logger.blank();
+  console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
+  console.log(chalk.cyan.bold('║') + chalk.white.bold('        🤖 MiniMax Configuration Manager               ') + chalk.cyan.bold('║'));
+  console.log(chalk.cyan.bold('║') + chalk.white('        Manage your MiniMax integration                  ') + chalk.cyan.bold('║'));
+  console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝'));
   logger.blank();
 
   // Check if there's an existing configuration
   const config = await loadConfig();
 
   if (!config || !config.api_key) {
-    logger.warning('No MiniMax configuration found.');
+    console.log(chalk.yellow('⚠️  No MiniMax configuration found.'));
     logger.blank();
-    logger.info('Please run ' + chalk.cyan('mmhelper init') + ' to set up MiniMax.');
+    console.log(chalk.gray('   Please run ') + chalk.cyan.bold('mmhelper init') + chalk.gray(' to set up MiniMax.'));
+    logger.blank();
     return;
   }
 
-  // Show current status
-  logger.title('Current Configuration');
+  // Show current status with beautiful card
   logger.blank();
-
-  const maskedKey = config.api_key
-    ? `${config.api_key.slice(0, 8)}${'*'.repeat(Math.max(0, config.api_key.length - 8))}`
-    : 'Not set';
-
-  logger.info(`API Key:     ${chalk.cyan(maskedKey)}`);
-  logger.info(`Region:      ${chalk.cyan(config.region)}`);
-  logger.info(`Model:       ${chalk.cyan(config.model)}`);
-  logger.info(`Base URL:    ${chalk.cyan(config.base_url)}`);
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  📋 Current Configuration                                ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('├─────────────────────────────────────────────────────────┤'));
+  console.log(chalk.bold.cyan('│') + chalk.white('  API Key:     ') + chalk.green(config.api_key.slice(0, 8) + '****') + '                              '.repeat(0) + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('│') + chalk.white('  Region:      ') + chalk.cyan(config.region === 'international' ? '🌍 International' : '🇨🇳 China') + '                                '.repeat(0) + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('│') + chalk.white('  Model:       ') + chalk.yellow.bold('MiniMax-M2.1') + '                                       '.repeat(0) + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('│') + chalk.white('  Base URL:    ') + chalk.gray(config.base_url) + '  '.repeat(0) + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
   logger.blank();
 
   // Show menu
@@ -45,26 +44,26 @@ export async function configMenu(): Promise<void> {
     {
       type: 'list',
       name: 'action',
-      message: 'What would you like to do?',
+      message: chalk.bold.cyan('What would you like to do?'),
       choices: [
         {
-          name: '🔄 Configuration Refresh - Update Claude Code\'s MiniMax configuration',
+          name: chalk.green('🔄') + ' Configuration Refresh - ' + chalk.white('Update Claude Code\'s MiniMax configuration'),
           value: 'refresh',
           short: 'Configuration Refresh'
         },
         {
-          name: '🗑️  Unload Configuration - Remove MiniMax configuration from Claude Code',
+          name: chalk.red('🗑️ ') + ' Unload Configuration - ' + chalk.white('Remove MiniMax from Claude Code'),
           value: 'unload',
           short: 'Unload Configuration'
         },
         {
-          name: '🔑 Change API Key - Update your MiniMax API key',
+          name: chalk.yellow('🔑') + ' Change API Key - ' + chalk.white('Update your MiniMax API key'),
           value: 'change-key',
           short: 'Change API Key'
         },
         new inquirer.Separator(),
         {
-          name: '❌ Exit',
+          name: chalk.gray('❌ Exit'),
           value: 'exit',
           short: 'Exit'
         }
@@ -85,59 +84,69 @@ export async function configMenu(): Promise<void> {
       await handleChangeKey();
       break;
     case 'exit':
-      logger.info('Exiting...');
+      console.log(chalk.gray('👋 Goodbye!'));
       break;
   }
 }
 
 async function handleRefresh(): Promise<void> {
-  logger.title('Configuration Refresh');
   logger.blank();
-  logger.info('This will reapply your MiniMax configuration to Claude Code.');
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔄 Configuration Refresh                                ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+  console.log(chalk.white('  This will reapply your MiniMax configuration to Claude Code.'));
+  logger.blank();
+  console.log(chalk.gray('  ✅ Keeps your current API key'));
+  console.log(chalk.gray('  ✅ Updates Claude Code settings'));
+  console.log(chalk.gray('  ✅ Restarts MiniMax integration'));
   logger.blank();
 
   const { confirm } = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'confirm',
-      message: 'Continue?',
+      message: chalk.bold.cyan('Continue?'),
       default: true
     }
   ]);
 
   if (!confirm) {
-    logger.info('Operation cancelled.');
+    console.log(chalk.yellow('  ⚠️  Operation cancelled.'));
     return;
   }
 
   try {
     await authApply();
   } catch (error) {
-    logger.error('Failed to refresh configuration.');
+    console.log(chalk.red('  ❌ Failed to refresh configuration.'));
     if (error instanceof Error) {
-      logger.error(error.message);
+      console.log(chalk.red('     ' + error.message));
     }
   }
 }
 
 async function handleUnload(): Promise<void> {
-  logger.title('Unload Configuration');
   logger.blank();
-  logger.warning('This will remove MiniMax configuration from Claude Code.');
-  logger.info('Your saved API key will be kept for future use.');
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🗑️  Unload Configuration                                  ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+  console.log(chalk.yellow('  ⚠️  This will remove MiniMax configuration from Claude Code.'));
+  console.log(chalk.white('  Your saved API key will be kept for future use.'));
   logger.blank();
 
   const { confirm } = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'confirm',
-      message: 'Continue?',
+      message: chalk.bold.yellow('Continue?'),
       default: false
     }
   ]);
 
   if (!confirm) {
-    logger.info('Operation cancelled.');
+    console.log(chalk.yellow('  ⚠️  Operation cancelled.'));
     return;
   }
 
@@ -146,7 +155,7 @@ async function handleUnload(): Promise<void> {
       {
         type: 'confirm',
         name: 'removeKey',
-        message: 'Also remove your saved API key?',
+        message: chalk.bold.yellow('Also remove your saved API key?'),
         default: false
       }
     ]);
@@ -155,8 +164,8 @@ async function handleUnload(): Promise<void> {
       await authRevoke();
     } else {
       // Only remove from Claude settings, keep saved config
-      const { saveClaudeSettings } = await import('../utils/config.js');
-      const claudeSettings = await (await import('../utils/config.js')).loadClaudeSettings();
+      const { loadClaudeSettings, saveClaudeSettings } = await import('../utils/config.js');
+      const claudeSettings = await loadClaudeSettings();
 
       if (claudeSettings?.env) {
         delete claudeSettings.env.ANTHROPIC_BASE_URL;
@@ -169,32 +178,37 @@ async function handleUnload(): Promise<void> {
         delete claudeSettings.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
         delete claudeSettings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
 
-        await (await import('../utils/config.js')).saveClaudeSettings(claudeSettings);
-        logger.success('MiniMax configuration removed from Claude Code.');
-        logger.info('Your API key is saved. Run ' + chalk.cyan('mmhelper config') + ' to reapply.');
+        await saveClaudeSettings(claudeSettings);
+        logger.blank();
+        console.log(chalk.green('  ✅ MiniMax configuration removed from Claude Code.'));
+        console.log(chalk.gray('     Your API key is saved. Run ') + chalk.cyan('mmhelper config') + chalk.gray(' to reapply.'));
       } else {
-        logger.warning('No Claude Code configuration found.');
+        console.log(chalk.yellow('  ⚠️  No Claude Code configuration found.'));
       }
     }
   } catch (error) {
-    logger.error('Failed to unload configuration.');
+    console.log(chalk.red('  ❌ Failed to unload configuration.'));
     if (error instanceof Error) {
-      logger.error(error.message);
+      console.log(chalk.red('     ' + error.message));
     }
   }
 }
 
 async function handleChangeKey(): Promise<void> {
-  logger.title('Change API Key');
   logger.blank();
-  logger.info('This will update your MiniMax API key.');
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔑 Change API Key                                       ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+  console.log(chalk.white('  This will update your MiniMax API key.'));
+  logger.blank();
 
   try {
     await authSet();
   } catch (error) {
-    logger.error('Failed to change API key.');
+    console.log(chalk.red('  ❌ Failed to change API key.'));
     if (error instanceof Error) {
-      logger.error(error.message);
+      console.log(chalk.red('     ' + error.message));
     }
   }
 }
