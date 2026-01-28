@@ -1,0 +1,55 @@
+{
+  "name": "@minimax_coding/helper",
+  "version": "1.0.0",
+  "description": "A CLI helper for MiniMax Coding Plan Users to configure Claude Code with MiniMax-M2.1 model",
+  "main": "dist/index.js",
+  "bin": {
+    "minimax-helper": "./dist/cli.js",
+    "mmhelper": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "minimax",
+    "claude-code",
+    "ai-coding",
+    "cli",
+    "coding-helper"
+  ],
+  "author": "hunghoang3011 <https://github.com/hunghoang3011>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hunghoang3011/minimax-coding-helper.git"
+  },
+  "homepage": "https://github.com/hunghoang3011/minimax-coding-helper#readme",
+  "bugs": {
+    "url": "https://github.com/hunghoang3011/minimax-coding-helper/issues"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1",
+    "js-yaml": "^4.1.0",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/inquirer": "^9.0.7",
+    "@types/js-yaml": "^4.0.9",
+    "@types/fs-extra": "^11.0.4",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}
