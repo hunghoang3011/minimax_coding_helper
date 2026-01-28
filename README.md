@@ -1,6 +1,6 @@
 # MiniMax Coding Helper
 
-[![npm version](https://badge.fury.io/js/%40minimax_coding%2Fhelper.svg)](https://www.npmjs.com/package/@minimax_coding/helper)
+[![npm version](https://badge.fury.io/js/%40minimax_coding%2Fhelper.svg)](https://www.npmjs.com/package/@hunghoang3011/minimax-coding-helper)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > A CLI helper for MiniMax Coding Plan Users to configure Claude Code with the MiniMax-M2.1 model.
@@ -31,13 +31,13 @@ GitHub: [@hunghoang3011](https://github.com/hunghoang3011)
 ### Run directly with npx (Recommended)
 
 ```bash
-npx @minimax_coding/helper
+npx @hunghoang3011/minimax-coding-helper
 ```
 
 ### Install globally
 
 ```bash
-npm install -g @minimax_coding/helper
+npm install -g @hunghoang3011/minimax-coding-helper
 ```
 
 Then run:

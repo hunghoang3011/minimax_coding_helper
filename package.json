@@ -1,11 +1,11 @@
 {
-  "name": "@minimax_coding/helper",
-  "version": "1.0.0",
+  "name": "@hunghoang3011/minimax-coding-helper",
+  "version": "1.0.1",
   "description": "A CLI helper for MiniMax Coding Plan Users to configure Claude Code with MiniMax-M2.1 model",
   "main": "dist/index.js",
   "bin": {
-    "minimax-helper": "./dist/cli.js",
-    "mmhelper": "./dist/cli.js"
+    "minimax-helper": "bin/cli.js",
+    "mmhelper": "bin/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -50,6 +50,7 @@
   },
   "files": [
     "dist",
+    "bin",
     "README.md"
   ]
 }
