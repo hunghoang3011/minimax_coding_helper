@@ -25,6 +25,7 @@
 
 - **🎯 Interactive Wizard** - User-friendly onboarding with step-by-step guidance
 - **⚡ MiniMax-M2.1 Integration** - Harness the power of MiniMax's advanced coding model in Claude Code
+- **🔌 MCP Support** - Enable MiniMax's native MCP tools (`web_search`, `understand_image`)
 - **🔐 Secure API Key Management** - Your API keys are stored locally and encrypted
 - **🌍 Multi-Region Support** - Choose between International and China regions for optimal performance
 - **🔍 Health Check System** - Built-in `doctor` command to diagnose and fix configuration issues
@@ -98,6 +99,74 @@ That's it! You're now using MiniMax-M2.1 in Claude Code.
 
 ---
 
+## 🔌 MCP (Model Context Protocol)
+
+MiniMax Coding Plan provides exclusive MCP tools to enhance your AI coding experience:
+
+### Available MCP Tools
+
+| Tool | Description | Use Case |
+|------|-------------|----------|
+| 🔍 **web_search** | Search the web for real-time information | Look up documentation, news, and resources |
+| 🖼️ **understand_image** | Analyze and understand images | Extract text, analyze diagrams, interpret screenshots |
+
+### Enable MCP
+
+#### Option 1: Using Config Menu (Recommended)
+
+```bash
+mmhelper config
+# Select "MCP Management"
+# Select "Enable MCP"
+```
+
+#### Option 2: Using CLI Command
+
+```bash
+mmhelper auth mcp enable
+```
+
+### Disable MCP
+
+```bash
+mmhelper config
+# Select "MCP Management"
+# Select "Disable MCP"
+```
+
+Or use CLI:
+
+```bash
+mmhelper auth mcp disable
+```
+
+### MCP Requirements
+
+- **uvx** must be installed (Python package runner)
+- MiniMax API key with Coding Plan subscription
+
+#### Install uvx
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### Verify MCP Installation
+
+After enabling MCP, restart Claude Code and run:
+
+```bash
+/mcp
+```
+
+You should see `web_search` and `understand_image` in the list of available tools.
+
+---
+
 ## 📚 Commands
 
 ### 🎬 `mmhelper init`
@@ -155,6 +224,12 @@ mmhelper auth revoke
 
 # Show configuration file paths
 mmhelper auth path
+
+# Enable MCP (web_search, understand_image)
+mmhelper auth mcp enable
+
+# Disable MCP
+mmhelper auth mcp disable
 ```
 
 **Perfect for:** Advanced configuration management
@@ -187,12 +262,13 @@ mmhelper --help
 
 ### 📁 Storage Locations
 
-The helper stores configuration in two locations:
+The helper stores configuration in multiple locations:
 
 | Location | Path | Purpose |
 |----------|------|---------|
 | **MiniMax Config** | `~/.minimax-helper/config.yaml` | API key and region settings |
 | **Claude Code Settings** | `~/.claude/settings.json` | MiniMax API endpoints |
+| **Claude MCP Config** | `~/.claude.json` | MCP server configuration |
 
 ### 🔧 Claude Code Environment Variables
 
@@ -298,6 +374,18 @@ mmhelper init
 
 # Or use the new config menu
 mmhelper config
+```
+
+### Enable MCP Tools
+
+```bash
+# Option 1: Use the config menu (recommended)
+mmhelper config
+# Select "MCP Management"
+# Select "Enable MCP"
+
+# Option 2: Use auth command
+mmhelper auth mcp enable
 ```
 
 ### Change API Key

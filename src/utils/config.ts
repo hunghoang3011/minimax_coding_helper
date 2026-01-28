@@ -181,3 +181,104 @@ export async function listBackups(): Promise<string[]> {
     .filter(f => f.startsWith('settings.backup.') && f.endsWith('.json'))
     .map(f => path.join(configDir, f));
 }
+
+// MCP Configuration
+export interface MCPServerConfig {
+  command: string;
+  args: string[];
+  env: {
+    MINIMAX_API_KEY: string;
+    MINIMAX_API_HOST: string;
+  };
+}
+
+export interface ClaudeMCPConfig {
+  mcpServers?: {
+    MiniMax?: MCPServerConfig;
+  };
+}
+
+export function getClaudeJsonPath(): string {
+  return path.join(os.homedir(), '.claude.json');
+}
+
+export async function loadClaudeJson(): Promise<ClaudeMCPConfig | null> {
+  try {
+    const jsonPath = getClaudeJsonPath();
+    const jsonExists = await fs.pathExists(jsonPath);
+    if (!jsonExists) {
+      return {};
+    }
+
+    const jsonContent = await fs.readFile(jsonPath, 'utf-8');
+    return JSON.parse(jsonContent) as ClaudeMCPConfig;
+  } catch (error) {
+    console.error('Error loading Claude JSON:', error);
+    return null;
+  }
+}
+
+export async function saveClaudeJson(config: ClaudeMCPConfig): Promise<void> {
+  try {
+    const jsonPath = getClaudeJsonPath();
+
+    // Load existing config and merge
+    const existingConfig = await loadClaudeJson() || {};
+    const mergedConfig = {
+      ...existingConfig,
+      ...config
+    };
+
+    await fs.writeFile(
+      jsonPath,
+      JSON.stringify(mergedConfig, null, 2),
+      'utf-8'
+    );
+  } catch (error) {
+    console.error('Error saving Claude JSON:', error);
+    throw error;
+  }
+}
+
+export async function enableMCP(config: MiniMaxConfig): Promise<void> {
+  const apiHost = config.region === 'international'
+    ? 'https://api.minimax.io'
+    : 'https://api.minimaxi.com';
+
+  const mcpConfig: ClaudeMCPConfig = {
+    mcpServers: {
+      MiniMax: {
+        command: 'uvx',
+        args: [
+          'minimax-coding-plan-mcp',
+          '-y'
+        ],
+        env: {
+          MINIMAX_API_KEY: config.api_key,
+          MINIMAX_API_HOST: apiHost
+        }
+      }
+    }
+  };
+
+  await saveClaudeJson(mcpConfig);
+}
+
+export async function disableMCP(): Promise<void> {
+  const config = await loadClaudeJson();
+  if (config?.mcpServers?.MiniMax) {
+    delete config.mcpServers.MiniMax;
+
+    // If no MCP servers left, remove the mcpServers key
+    if (Object.keys(config.mcpServers).length === 0) {
+      delete config.mcpServers;
+    }
+
+    await saveClaudeJson(config);
+  }
+}
+
+export async function isMCPEnabled(): Promise<boolean> {
+  const config = await loadClaudeJson();
+  return config?.mcpServers?.MiniMax !== undefined;
+}

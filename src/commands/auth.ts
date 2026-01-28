@@ -12,6 +12,9 @@ import {
   backupClaudeSettings,
   getConfigFile,
   getClaudeSettingsPath,
+  enableMCP,
+  disableMCP,
+  isMCPEnabled,
   type MiniMaxConfig
 } from '../utils/config.js';
 import { logger, createSpinner } from '../utils/logger.js';
@@ -233,4 +236,56 @@ export async function authPath(): Promise<void> {
   logger.blank();
   logger.info(`MiniMax Config:  ${configExists ? chalk.green('Exists') : chalk.red('Not Found')}`);
   logger.info(`Claude Settings: ${claudeExists ? chalk.green('Exists') : chalk.red('Not Found')}`);
+}
+
+export async function authMCPEnable(): Promise<void> {
+  const config = await loadConfig();
+
+  if (!config || !config.api_key) {
+    logger.error('No API key found. Run `mmhelper auth set` to configure one.');
+    return;
+  }
+
+  const spinner = createSpinner('Enabling MiniMax MCP...');
+  spinner.start();
+
+  try {
+    await enableMCP(config);
+
+    spinner.succeed('MiniMax MCP enabled successfully!');
+    logger.blank();
+    logger.success('MCP tools (web_search, understand_image) are now available in Claude Code.');
+    logger.info('Restart Claude Code to use MCP features.');
+  } catch (error) {
+    spinner.fail('Failed to enable MCP.');
+    if (error instanceof Error) {
+      logger.error(error.message);
+    }
+    throw error;
+  }
+}
+
+export async function authMCPDisable(): Promise<void> {
+  const mcpEnabled = await isMCPEnabled();
+
+  if (!mcpEnabled) {
+    logger.warning('MCP is not currently enabled.');
+    return;
+  }
+
+  const spinner = createSpinner('Disabling MiniMax MCP...');
+  spinner.start();
+
+  try {
+    await disableMCP();
+
+    spinner.succeed('MiniMax MCP disabled successfully!');
+    logger.info('Restart Claude Code to apply changes.');
+  } catch (error) {
+    spinner.fail('Failed to disable MCP.');
+    if (error instanceof Error) {
+      logger.error(error.message);
+    }
+    throw error;
+  }
 }

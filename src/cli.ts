@@ -8,7 +8,9 @@ import {
   authShow,
   authRevoke,
   authApply,
-  authPath
+  authPath,
+  authMCPEnable,
+  authMCPDisable
 } from './commands/auth.js';
 import { runDoctor } from './commands/doctor.js';
 import { configMenu } from './commands/config.js';
@@ -94,6 +96,35 @@ authCommand
   .action(async () => {
     try {
       await authPath();
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+// MCP command group
+const mcpCommand = authCommand
+  .command('mcp')
+  .description('Manage MiniMax MCP (Model Context Protocol)');
+
+mcpCommand
+  .command('enable')
+  .description('Enable MiniMax MCP (web_search, understand_image)')
+  .action(async () => {
+    try {
+      await authMCPEnable();
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+mcpCommand
+  .command('disable')
+  .description('Disable MiniMax MCP')
+  .action(async () => {
+    try {
+      await authMCPDisable();
     } catch (error) {
       console.error(chalk.red('Error:'), error);
       process.exit(1);

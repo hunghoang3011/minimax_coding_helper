@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { authSet, authApply, authRevoke } from './auth.js';
-import { loadConfig } from '../utils/config.js';
+import { authSet, authApply, authRevoke, authMCPEnable, authMCPDisable } from './auth.js';
+import { loadConfig, isMCPEnabled } from '../utils/config.js';
 import { logger, printBox } from '../utils/logger.js';
 
 export async function configMenu(): Promise<void> {
@@ -26,6 +26,9 @@ export async function configMenu(): Promise<void> {
     return;
   }
 
+  // Check MCP status
+  const mcpEnabled = await isMCPEnabled();
+
   // Show current status with beautiful card
   logger.blank();
   console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
@@ -34,6 +37,7 @@ export async function configMenu(): Promise<void> {
   console.log(chalk.bold.cyan('│') + chalk.white('  API Key:     ') + chalk.green(config.api_key.slice(0, 8) + '****') + '                              '.repeat(0) + chalk.bold.cyan('│'));
   console.log(chalk.bold.cyan('│') + chalk.white('  Region:      ') + chalk.cyan(config.region === 'international' ? '🌍 International' : '🇨🇳 China') + '                                '.repeat(0) + chalk.bold.cyan('│'));
   console.log(chalk.bold.cyan('│') + chalk.white('  Model:       ') + chalk.yellow.bold('MiniMax-M2.1') + '                                       '.repeat(0) + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('│') + chalk.white('  MCP Status:  ') + (mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled')) + '                                   '.repeat(0) + chalk.bold.cyan('│'));
   console.log(chalk.bold.cyan('│') + chalk.white('  Base URL:    ') + chalk.gray(config.base_url) + '  '.repeat(0) + chalk.bold.cyan('│'));
   console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
   logger.blank();
@@ -63,6 +67,12 @@ export async function configMenu(): Promise<void> {
         },
         new inquirer.Separator(),
         {
+          name: chalk.bold.blue('🔌 MCP Management') + chalk.gray(' - ') + chalk.white('Model Context Protocol'),
+          value: 'mcp-menu',
+          short: 'MCP Management'
+        },
+        new inquirer.Separator(),
+        {
           name: chalk.gray('❌ Exit'),
           value: 'exit',
           short: 'Exit'
@@ -83,8 +93,120 @@ export async function configMenu(): Promise<void> {
     case 'change-key':
       await handleChangeKey();
       break;
+    case 'mcp-menu':
+      await handleMCPMenu();
+      break;
     case 'exit':
       console.log(chalk.gray('👋 Goodbye!'));
+      break;
+  }
+}
+
+async function handleMCPMenu(): Promise<void> {
+  const mcpEnabled = await isMCPEnabled();
+
+  logger.blank();
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔌 MCP (Model Context Protocol)                      ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+
+  const mcpStatus = mcpEnabled
+    ? chalk.green.bold('✅ Enabled')
+    : chalk.gray('❌ Disabled');
+
+  console.log(chalk.white('  Current Status: ') + mcpStatus);
+  logger.blank();
+
+  if (mcpEnabled) {
+    console.log(chalk.gray('  Available MCP Tools:'));
+    console.log(chalk.cyan('    • ') + chalk.white('web_search') + chalk.gray(' - Search the web for information'));
+    console.log(chalk.cyan('    • ') + chalk.white('understand_image') + chalk.gray(' - Analyze and understand images'));
+    logger.blank();
+  }
+
+  const { action } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'action',
+      message: chalk.bold.cyan('MCP Management:'),
+      choices: mcpEnabled ? [
+        {
+          name: chalk.red('🔴 Disable MCP') + ' - ' + chalk.gray('Remove MCP from Claude Code'),
+          value: 'disable',
+          short: 'Disable MCP'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('⬅️  Back'),
+          value: 'back',
+          short: 'Back'
+        }
+      ] : [
+        {
+          name: chalk.green('🟢 Enable MCP') + ' - ' + chalk.gray('Add web_search & understand_image tools'),
+          value: 'enable',
+          short: 'Enable MCP'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('⬅️  Back'),
+          value: 'back',
+          short: 'Back'
+        }
+      ]
+    }
+  ]);
+
+  logger.blank();
+
+  switch (action) {
+    case 'enable':
+      try {
+        await authMCPEnable();
+        logger.blank();
+        const { continueMenu } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'continueMenu',
+            message: 'Return to main menu?',
+            default: true
+          }
+        ]);
+        if (continueMenu) {
+          await configMenu();
+        }
+      } catch (error) {
+        console.log(chalk.red('  ❌ Failed to enable MCP.'));
+        if (error instanceof Error) {
+          console.log(chalk.red('     ' + error.message));
+        }
+      }
+      break;
+    case 'disable':
+      try {
+        await authMCPDisable();
+        logger.blank();
+        const { continueMenu } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'continueMenu',
+            message: 'Return to main menu?',
+            default: true
+          }
+        ]);
+        if (continueMenu) {
+          await configMenu();
+        }
+      } catch (error) {
+        console.log(chalk.red('  ❌ Failed to disable MCP.'));
+        if (error instanceof Error) {
+          console.log(chalk.red('     ' + error.message));
+        }
+      }
+      break;
+    case 'back':
+      await configMenu();
       break;
   }
 }
