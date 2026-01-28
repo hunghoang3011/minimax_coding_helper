@@ -2,74 +2,75 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { authSet, authApply, authRevoke, authMCPEnable, authMCPDisable } from './auth.js';
 import { loadConfig, isMCPEnabled } from '../utils/config.js';
-import { logger, printBox } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 export async function configMenu(): Promise<void> {
   console.clear();
 
-  // Beautiful header
+  // Show header
   logger.blank();
   console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
   console.log(chalk.cyan.bold('║') + chalk.white.bold('        🤖 MiniMax Configuration Manager               ') + chalk.cyan.bold('║'));
-  console.log(chalk.cyan.bold('║') + chalk.white('        Manage your MiniMax integration                  ') + chalk.cyan.bold('║'));
   console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝'));
   logger.blank();
 
-  // Check if there's an existing configuration
+  // Check existing config
   const config = await loadConfig();
 
   if (!config || !config.api_key) {
-    console.log(chalk.yellow('⚠️  No MiniMax configuration found.'));
-    logger.blank();
+    console.log(chalk.yellow('⚠️  No configuration found.'));
     console.log(chalk.gray('   Please run ') + chalk.cyan.bold('mmhelper init') + chalk.gray(' to set up MiniMax.'));
     logger.blank();
     return;
   }
 
-  // Check MCP status
+  // Show current status
+  const maskedKey = config.api_key.slice(0, 4) + '****';
   const mcpEnabled = await isMCPEnabled();
 
-  // Show current status with beautiful card
-  logger.blank();
-  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
-  console.log(chalk.bold.cyan('│') + chalk.white.bold('  📋 Current Configuration                                ') + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('├─────────────────────────────────────────────────────────┤'));
-  console.log(chalk.bold.cyan('│') + chalk.white('  API Key:     ') + chalk.green(config.api_key.slice(0, 8) + '****') + '                              '.repeat(0) + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('│') + chalk.white('  Region:      ') + chalk.cyan(config.region === 'international' ? '🌍 International' : '🇨🇳 China') + '                                '.repeat(0) + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('│') + chalk.white('  Model:       ') + chalk.yellow.bold('MiniMax-M2.1') + '                                       '.repeat(0) + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('│') + chalk.white('  MCP Status:  ') + (mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled')) + '                                   '.repeat(0) + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('│') + chalk.white('  Base URL:    ') + chalk.gray(config.base_url) + '  '.repeat(0) + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  console.log(chalk.white('  Current Configuration:'));
+  console.log(chalk.cyan('  Coding Plan: ') + chalk.white.bold(config.region === 'international' ? '🌍 MiniMax Coding Plan Global' : '🇨🇳 MiniMax Coding Plan China'));
+  console.log(chalk.cyan('  API Key: ') + chalk.green('Set (' + maskedKey + ')'));
+  console.log(chalk.cyan('  MCP Status: ') + (mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled')));
   logger.blank();
   logger.blank();
 
-  // Show menu
+  // Show action menu
+  await showActionMenu(config);
+}
+
+async function showActionMenu(config: any): Promise<void> {
   const { action } = await inquirer.prompt([
     {
       type: 'list',
       name: 'action',
-      message: chalk.bold.cyan('What would you like to do?'),
+      message: chalk.bold.cyan('Select action:'),
       choices: [
         {
-          name: chalk.green('🔄') + ' Configuration Refresh - ' + chalk.white('Update Claude Code\'s MiniMax configuration'),
+          name: chalk.green('🔄 Configuration Refresh') + ' - ' + chalk.gray('Update Claude Code\'s MiniMax configuration'),
           value: 'refresh',
           short: 'Configuration Refresh'
         },
         {
-          name: chalk.red('🗑️ ') + ' Unload Configuration - ' + chalk.white('Remove MiniMax from Claude Code'),
+          name: chalk.red('🗑️  Unload Configuration') + ' - ' + chalk.gray('Remove MiniMax configuration from Claude Code'),
           value: 'unload',
           short: 'Unload Configuration'
         },
         {
-          name: chalk.yellow('🔑') + ' Change API Key - ' + chalk.white('Update your MiniMax API key'),
-          value: 'change-key',
-          short: 'Change API Key'
+          name: chalk.blue('🔌 MCP Configuration') + ' - ' + chalk.gray('Manage Model Context Protocol'),
+          value: 'mcp',
+          short: 'MCP Configuration'
+        },
+        {
+          name: chalk.yellow('🏪 Plugin Marketplace') + ' - ' + chalk.gray('Browse and install plugins (Coming soon)'),
+          value: 'marketplace',
+          short: 'Plugin Marketplace'
         },
         new inquirer.Separator(),
         {
-          name: chalk.bold.blue('🔌 MCP Management') + chalk.gray(' - ') + chalk.white('Model Context Protocol'),
-          value: 'mcp-menu',
-          short: 'MCP Management'
+          name: chalk.cyan.bold('▶️  Start Claude Code') + ' - ' + chalk.gray('Open a new terminal and run: claude'),
+          value: 'start-claude',
+          short: 'Start Claude Code'
         },
         new inquirer.Separator(),
         {
@@ -85,16 +86,19 @@ export async function configMenu(): Promise<void> {
 
   switch (action) {
     case 'refresh':
-      await handleRefresh();
+      await handleRefresh(config);
       break;
     case 'unload':
       await handleUnload();
       break;
-    case 'change-key':
-      await handleChangeKey();
+    case 'mcp':
+      await handleMCPMenu(config);
       break;
-    case 'mcp-menu':
-      await handleMCPMenu();
+    case 'marketplace':
+      await handleMarketplace(config);
+      break;
+    case 'start-claude':
+      await handleStartClaude(config);
       break;
     case 'exit':
       console.log(chalk.gray('👋 Goodbye!'));
@@ -102,126 +106,13 @@ export async function configMenu(): Promise<void> {
   }
 }
 
-async function handleMCPMenu(): Promise<void> {
-  const mcpEnabled = await isMCPEnabled();
-
-  logger.blank();
-  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
-  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔌 MCP (Model Context Protocol)                      ') + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
-  logger.blank();
-
-  const mcpStatus = mcpEnabled
-    ? chalk.green.bold('✅ Enabled')
-    : chalk.gray('❌ Disabled');
-
-  console.log(chalk.white('  Current Status: ') + mcpStatus);
-  logger.blank();
-
-  if (mcpEnabled) {
-    console.log(chalk.gray('  Available MCP Tools:'));
-    console.log(chalk.cyan('    • ') + chalk.white('web_search') + chalk.gray(' - Search the web for information'));
-    console.log(chalk.cyan('    • ') + chalk.white('understand_image') + chalk.gray(' - Analyze and understand images'));
-    logger.blank();
-  }
-
-  const { action } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'action',
-      message: chalk.bold.cyan('MCP Management:'),
-      choices: mcpEnabled ? [
-        {
-          name: chalk.red('🔴 Disable MCP') + ' - ' + chalk.gray('Remove MCP from Claude Code'),
-          value: 'disable',
-          short: 'Disable MCP'
-        },
-        new inquirer.Separator(),
-        {
-          name: chalk.gray('⬅️  Back'),
-          value: 'back',
-          short: 'Back'
-        }
-      ] : [
-        {
-          name: chalk.green('🟢 Enable MCP') + ' - ' + chalk.gray('Add web_search & understand_image tools'),
-          value: 'enable',
-          short: 'Enable MCP'
-        },
-        new inquirer.Separator(),
-        {
-          name: chalk.gray('⬅️  Back'),
-          value: 'back',
-          short: 'Back'
-        }
-      ]
-    }
-  ]);
-
-  logger.blank();
-
-  switch (action) {
-    case 'enable':
-      try {
-        await authMCPEnable();
-        logger.blank();
-        const { continueMenu } = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'continueMenu',
-            message: 'Return to main menu?',
-            default: true
-          }
-        ]);
-        if (continueMenu) {
-          await configMenu();
-        }
-      } catch (error) {
-        console.log(chalk.red('  ❌ Failed to enable MCP.'));
-        if (error instanceof Error) {
-          console.log(chalk.red('     ' + error.message));
-        }
-      }
-      break;
-    case 'disable':
-      try {
-        await authMCPDisable();
-        logger.blank();
-        const { continueMenu } = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'continueMenu',
-            message: 'Return to main menu?',
-            default: true
-          }
-        ]);
-        if (continueMenu) {
-          await configMenu();
-        }
-      } catch (error) {
-        console.log(chalk.red('  ❌ Failed to disable MCP.'));
-        if (error instanceof Error) {
-          console.log(chalk.red('     ' + error.message));
-        }
-      }
-      break;
-    case 'back':
-      await configMenu();
-      break;
-  }
-}
-
-async function handleRefresh(): Promise<void> {
+async function handleRefresh(config: any): Promise<void> {
   logger.blank();
   console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
   console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔄 Configuration Refresh                                ') + chalk.bold.cyan('│'));
   console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
   logger.blank();
   console.log(chalk.white('  This will reapply your MiniMax configuration to Claude Code.'));
-  logger.blank();
-  console.log(chalk.gray('  ✅ Keeps your current API key'));
-  console.log(chalk.gray('  ✅ Updates Claude Code settings'));
-  console.log(chalk.gray('  ✅ Restarts MiniMax integration'));
   logger.blank();
 
   const { confirm } = await inquirer.prompt([
@@ -234,17 +125,20 @@ async function handleRefresh(): Promise<void> {
   ]);
 
   if (!confirm) {
-    console.log(chalk.yellow('  ⚠️  Operation cancelled.'));
+    await showActionMenu(config);
     return;
   }
 
   try {
     await authApply();
+    logger.blank();
+    console.log(chalk.green('  ✅ Configuration refreshed successfully!'));
+    await promptContinue();
+    await showActionMenu(config);
   } catch (error) {
     console.log(chalk.red('  ❌ Failed to refresh configuration.'));
-    if (error instanceof Error) {
-      console.log(chalk.red('     ' + error.message));
-    }
+    await promptContinue();
+    await showActionMenu(config);
   }
 }
 
@@ -268,7 +162,8 @@ async function handleUnload(): Promise<void> {
   ]);
 
   if (!confirm) {
-    console.log(chalk.yellow('  ⚠️  Operation cancelled.'));
+    const config = await loadConfig();
+    await showActionMenu(config);
     return;
   }
 
@@ -285,7 +180,7 @@ async function handleUnload(): Promise<void> {
     if (removeKey) {
       await authRevoke();
     } else {
-      // Only remove from Claude settings, keep saved config
+      // Only remove from Claude settings
       const { loadClaudeSettings, saveClaudeSettings } = await import('../utils/config.js');
       const claudeSettings = await loadClaudeSettings();
 
@@ -303,34 +198,130 @@ async function handleUnload(): Promise<void> {
         await saveClaudeSettings(claudeSettings);
         logger.blank();
         console.log(chalk.green('  ✅ MiniMax configuration removed from Claude Code.'));
-        console.log(chalk.gray('     Your API key is saved. Run ') + chalk.cyan('mmhelper config') + chalk.gray(' to reapply.'));
-      } else {
-        console.log(chalk.yellow('  ⚠️  No Claude Code configuration found.'));
       }
     }
+    await promptContinue();
+    await configMenu();
   } catch (error) {
     console.log(chalk.red('  ❌ Failed to unload configuration.'));
-    if (error instanceof Error) {
-      console.log(chalk.red('     ' + error.message));
-    }
+    await promptContinue();
+    const config = await loadConfig();
+    await showActionMenu(config);
   }
 }
 
-async function handleChangeKey(): Promise<void> {
+async function handleMCPMenu(config: any): Promise<void> {
+  const mcpEnabled = await isMCPEnabled();
+
   logger.blank();
   console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
-  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔑 Change API Key                                       ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔌 MCP Configuration                                      ') + chalk.bold.cyan('│'));
   console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
   logger.blank();
-  console.log(chalk.white('  This will update your MiniMax API key.'));
+
+  const status = mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled');
+  console.log(chalk.white('  MCP Status: ') + status);
   logger.blank();
 
-  try {
-    await authSet();
-  } catch (error) {
-    console.log(chalk.red('  ❌ Failed to change API key.'));
-    if (error instanceof Error) {
-      console.log(chalk.red('     ' + error.message));
-    }
+  if (mcpEnabled) {
+    console.log(chalk.gray('  Available Tools:'));
+    console.log(chalk.cyan('    • ') + chalk.white('web_search') + chalk.gray(' - Search the web'));
+    console.log(chalk.cyan('    • ') + chalk.white('understand_image') + chalk.gray(' - Analyze images'));
+    logger.blank();
   }
+
+  const { action } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'action',
+      message: chalk.bold.cyan('MCP Management:'),
+      choices: mcpEnabled ? [
+        {
+          name: chalk.red('🔴 Disable MCP') + ' - ' + chalk.gray('Remove MCP from Claude Code'),
+          value: 'disable',
+          short: 'Disable MCP'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('⬅️  Back'),
+          value: 'back',
+          short: 'Back'
+        }
+      ] : [
+        {
+          name: chalk.green('🟢 Enable MCP') + ' - ' + chalk.gray('Add web_search & understand_image'),
+          value: 'enable',
+          short: 'Enable MCP'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('⬅️  Back'),
+          value: 'back',
+          short: 'Back'
+        }
+      ]
+    }
+  ]);
+
+  logger.blank();
+
+  switch (action) {
+    case 'enable':
+      try {
+        await authMCPEnable();
+        await promptContinue();
+        await showActionMenu(config);
+      } catch (error) {
+        console.log(chalk.red('  ❌ Failed to enable MCP.'));
+        await promptContinue();
+        await showActionMenu(config);
+      }
+      break;
+    case 'disable':
+      try {
+        await authMCPDisable();
+        await promptContinue();
+        await showActionMenu(config);
+      } catch (error) {
+        console.log(chalk.red('  ❌ Failed to disable MCP.'));
+        await promptContinue();
+        await showActionMenu(config);
+      }
+      break;
+    case 'back':
+      await showActionMenu(config);
+      break;
+  }
+}
+
+async function handleMarketplace(config: any): Promise<void> {
+  logger.blank();
+  console.log(chalk.yellow('  🏪 Plugin Marketplace'));
+  logger.blank();
+  console.log(chalk.gray('  Coming soon!'));
+  console.log(chalk.white('  You\'ll be able to browse and install plugins to enhance'));
+  console.log(chalk.white('  your MiniMax coding experience.'));
+  logger.blank();
+  await promptContinue();
+  await showActionMenu(config);
+}
+
+async function handleStartClaude(config: any): Promise<void> {
+  logger.blank();
+  console.log(chalk.cyan('  💡 To start Claude Code:'));
+  console.log(chalk.white('     1. Open a new terminal in your workspace'));
+  console.log(chalk.cyan('     2. Run: ') + chalk.white.bold('claude'));
+  logger.blank();
+  await promptContinue();
+  await showActionMenu(config);
+}
+
+async function promptContinue(): Promise<void> {
+  await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'continue',
+      message: 'Press Enter to continue...'
+    }
+  ]);
 }

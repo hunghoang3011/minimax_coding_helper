@@ -1,187 +1,458 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { authSet, authApply } from './auth.js';
+import { authSet, authApply, authMCPEnable } from './auth.js';
 import { loadConfig } from '../utils/config.js';
-import { logger, printBox } from '../utils/logger.js';
+import { logger } from '../utils/logger.js';
 
 export async function runInitWizard(): Promise<void> {
-  // Clear console and show welcome
   console.clear();
 
-  printBox([
-    chalk.bold.cyan('MiniMax Helper for Claude Code'),
-    '',
-    'Configure Claude Code to use MiniMax-M2.1 model',
-    'Press ^C at any time to quit'
+  // Show welcome header
+  logger.blank();
+  console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
+  console.log(chalk.cyan.bold('║') + chalk.white.bold('        🤖 MiniMax Helper for Claude Code                ') + chalk.cyan.bold('║'));
+  console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝'));
+  logger.blank();
+
+  // Check existing config
+  const existingConfig = await loadConfig();
+  const hasConfig = existingConfig && existingConfig.api_key;
+
+  if (hasConfig) {
+    const maskedKey = existingConfig.api_key!.slice(0, 4) + '****';
+    console.log(chalk.white('  Current Configuration:'));
+    console.log(chalk.cyan('  Coding Plan: ') + chalk.white.bold('MiniMax Coding Plan Global'));
+    console.log(chalk.cyan('  API Key: ') + chalk.green('Set (' + maskedKey + ')'));
+    logger.blank();
+  }
+
+  // Main menu
+  const { action } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'action',
+      message: chalk.bold.cyan('Select operation:'),
+      choices: [
+        {
+          name: chalk.cyan('🔑') + ' API Key - ' + chalk.white('Set your MiniMax API key'),
+          value: 'api-key',
+          short: 'API Key'
+        },
+        {
+          name: chalk.yellow('🌍') + ' Coding Plan - ' + chalk.white('Select your coding plan region'),
+          value: 'coding-plan',
+          short: 'Coding Plan'
+        },
+        {
+          name: chalk.green('🛠️ ') + ' Coding Tool - ' + chalk.white('Configure Claude Code integration'),
+          value: 'coding-tool',
+          short: 'Coding Tool'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('❌ Exit'),
+          value: 'exit',
+          short: 'Exit'
+        }
+      ]
+    }
   ]);
 
   logger.blank();
 
-  // Check if already configured
-  const existingConfig = await loadConfig();
-  if (existingConfig && existingConfig.api_key) {
-    const { reconfigure } = await inquirer.prompt([
+  switch (action) {
+    case 'api-key':
+      await handleApiKey();
+      break;
+    case 'coding-plan':
+      await handleCodingPlan();
+      break;
+    case 'coding-tool':
+      await handleCodingTool();
+      break;
+    case 'exit':
+      console.log(chalk.gray('👋 Goodbye!'));
+      break;
+  }
+}
+
+async function handleApiKey(): Promise<void> {
+  logger.blank();
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔑 API Key Configuration                                 ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+
+  const config = await loadConfig();
+
+  if (config && config.api_key) {
+    const maskedKey = config.api_key.slice(0, 4) + '****';
+    console.log(chalk.white('  Current API Key: ') + chalk.green(maskedKey));
+    logger.blank();
+
+    const { changeKey } = await inquirer.prompt([
       {
         type: 'confirm',
-        name: 'reconfigure',
-        message: 'MiniMax is already configured. Do you want to reconfigure?',
+        name: 'changeKey',
+        message: 'Do you want to change your API key?',
         default: false
       }
     ]);
 
-    if (!reconfigure) {
-      logger.info('Exiting. Use `mmhelper auth` to manage your configuration.');
+    if (!changeKey) {
+      await runInitWizard();
       return;
     }
   }
 
-  // Step 1: Welcome
-  logger.title('Step 1: Welcome');
-  logger.blank();
-  logger.info('This wizard will help you:');
-  logger.info('  1. Set up your MiniMax API key');
-  logger.info('  2. Configure Claude Code to use MiniMax-M2.1');
+  console.log(chalk.white('  Get your API key from: ') + chalk.cyan('https://platform.minimax.io/'));
   logger.blank();
 
-  const { ready } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'ready',
-      message: 'Ready to begin?',
-      default: true
-    }
-  ]);
-
-  if (!ready) {
-    logger.info('Exiting. Run `mmhelper init` when you\'re ready.');
-    return;
+  try {
+    await authSet();
+    logger.blank();
+    console.log(chalk.green('  ✅ API Key configured successfully!'));
+    await promptReturnToMenu();
+  } catch (error) {
+    console.log(chalk.red('  ❌ Failed to set API key.'));
+    await promptReturnToMenu();
   }
+}
 
-  // Step 2: Get API Key
-  console.clear();
-  logger.title('Step 2: API Key');
+async function handleCodingPlan(): Promise<void> {
   logger.blank();
-  logger.info('You need a MiniMax API key to continue.');
-  logger.blank();
-  logger.info('Get your API key from:');
-  logger.info(chalk.cyan('  https://platform.minimax.io/'));
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🌍 Coding Plan Selection                                 ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
   logger.blank();
 
-  const { hasApiKey } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'hasApiKey',
-      message: 'Do you have your API key ready?',
-      default: true
-    }
-  ]);
+  const config = await loadConfig();
 
-  if (!hasApiKey) {
-    logger.info('Please get your API key and run `mmhelper init` again.');
-    logger.info('Visit: https://platform.minimax.io/');
-    return;
+  if (config) {
+    console.log(chalk.white('  Current Coding Plan: ') + chalk.cyan.bold(config.region === 'international' ? '🌍 MiniMax Coding Plan Global' : '🇨🇳 MiniMax Coding Plan China'));
+    logger.blank();
   }
-
-  const { apiKey } = await inquirer.prompt([
-    {
-      type: 'password',
-      name: 'apiKey',
-      message: 'Enter your MiniMax API Key:',
-      mask: '*',
-      validate: (input: string) => {
-        if (!input || input.trim().length === 0) {
-          return 'API Key cannot be empty';
-        }
-        return true;
-      }
-    }
-  ]);
-
-  // Step 3: Select Region
-  console.clear();
-  logger.title('Step 3: Select Region');
-  logger.blank();
-  logger.info('Choose the region closest to you for better performance:');
-  logger.blank();
 
   const { region } = await inquirer.prompt([
     {
       type: 'list',
       name: 'region',
-      message: 'Select your region:',
+      message: chalk.bold.cyan('Select your coding plan:'),
       choices: [
         {
-          name: 'International (api.minimax.io)',
-          value: 'international',
-          short: 'International'
+          name: '🌍 MiniMax Coding Plan Global - International',
+          value: 'international'
         },
         {
-          name: 'China (api.minimaxi.com)',
-          value: 'china',
-          short: 'China'
+          name: '🇨🇳 MiniMax Coding Plan China - China Region',
+          value: 'china'
         }
       ],
-      default: 'international'
+      default: config?.region || 'international'
     }
   ]);
 
-  // Step 4: Confirm and Apply
-  console.clear();
-  logger.title('Step 4: Configuration Summary');
+  // Save region
+  if (config) {
+    config.region = region;
+    config.base_url = region === 'international'
+      ? 'https://api.minimax.io/anthropic'
+      : 'https://api.minimaxi.com/anthropic';
+
+    const { saveConfig } = await import('../utils/config.js');
+    await saveConfig(config);
+
+    logger.blank();
+    console.log(chalk.green('  ✅ Coding Plan updated successfully!'));
+    await promptReturnToMenu();
+  } else {
+    console.log(chalk.yellow('  ⚠️  Please set your API key first.'));
+    await promptReturnToMenu();
+  }
+}
+
+async function handleCodingTool(): Promise<void> {
+  logger.blank();
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🛠️  Coding Tool Configuration                              ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
   logger.blank();
 
-  const baseUrl = region === 'international'
-    ? 'https://api.minimax.io/anthropic'
-    : 'https://api.minimaxi.com/anthropic';
+  const config = await loadConfig();
 
-  logger.info('Your configuration:');
+  if (!config || !config.api_key) {
+    console.log(chalk.yellow('  ⚠️  Please configure your API key first.'));
+    await promptReturnToMenu();
+    return;
+  }
+
+  const maskedKey = config.api_key.slice(0, 4) + '****';
+
+  // Show current config
+  console.log(chalk.white('  Chelper Configuration:'));
+  console.log(chalk.cyan('  Coding Plan: ') + chalk.white.bold(config.region === 'international' ? '🌍 MiniMax Coding Plan Global' : '🇨🇳 MiniMax Coding Plan China'));
+  console.log(chalk.cyan('  API Key: ') + chalk.green('Set (' + maskedKey + ')'));
   logger.blank();
-  logger.info(`  Region:   ${chalk.cyan(region)}`);
-  logger.info(`  Base URL: ${chalk.cyan(baseUrl)}`);
-  logger.info(`  Model:    ${chalk.cyan('MiniMax-M2.1')}`);
+
+  const { tool } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'tool',
+      message: chalk.bold.cyan('Select coding tool to configure:'),
+      choices: [
+        {
+          name: chalk.green('💻') + ' Claude Code - ' + chalk.white('Configure Claude Code integration'),
+          value: 'claude-code',
+          short: 'Claude Code'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('⬅️  Back'),
+          value: 'back',
+          short: 'Back'
+        }
+      ]
+    }
+  ]);
+
+  logger.blank();
+
+  if (tool === 'back') {
+    await runInitWizard();
+    return;
+  }
+
+  if (tool === 'claude-code') {
+    await configureClaudeCode(config);
+  }
+}
+
+async function configureClaudeCode(config: any): Promise<void> {
+  logger.blank();
+  console.log(chalk.yellow('  ⚠️  Warning: You are modifying the Claude Code global configuration.'));
+  console.log(chalk.white('  Changes will affect all workspaces.'));
   logger.blank();
 
   const { confirm } = await inquirer.prompt([
     {
       type: 'confirm',
       name: 'confirm',
-      message: 'Apply this configuration?',
+      message: chalk.bold.yellow('Continue?'),
       default: true
     }
   ]);
 
   if (!confirm) {
-    logger.info('Configuration cancelled.');
+    await handleCodingTool();
     return;
   }
 
-  // Save and apply configuration
-  console.clear();
-  logger.title('Applying Configuration');
+  // Apply configuration
+  try {
+    await authApply();
+
+    logger.blank();
+    console.log(chalk.bold.cyan('  ╔════════════════════════════════════════════════════════════╗'));
+    console.log(chalk.bold.cyan('  ║') + chalk.white.bold('  ✅ Configuration synchronized                           ') + chalk.bold.cyan('║'));
+    console.log(chalk.bold.cyan('  ╚════════════════════════════════════════════════════════════╝'));
+    logger.blank();
+
+    // Ask about MCP
+    const { enableMCP } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'enableMCP',
+        message: 'Enable MCP (web_search & understand_image tools)?',
+        default: true
+      }
+    ]);
+
+    if (enableMCP) {
+      await authMCPEnable();
+    }
+
+    await showActionMenu(config);
+  } catch (error) {
+    console.log(chalk.red('  ❌ Failed to configure Claude Code.'));
+    await promptReturnToMenu();
+  }
+}
+
+async function showActionMenu(config: any): Promise<void> {
+  logger.blank();
   logger.blank();
 
-  try {
-    await authSet(apiKey.trim(), region);
-
-    logger.blank();
-    logger.title('Setup Complete!');
-    logger.blank();
-    logger.success('MiniMax has been configured for Claude Code.');
-    logger.blank();
-    logger.info('Next steps:');
-    logger.info('  1. Restart Claude Code if it\'s running');
-    logger.info('  2. Open a project and run: ' + chalk.cyan('claude'));
-    logger.info('  3. Enjoy coding with MiniMax-M2.1!');
-    logger.blank();
-    logger.info('Useful commands:');
-    logger.info('  ' + chalk.cyan('mmhelper auth show') + '  - Show configuration');
-    logger.info('  ' + chalk.cyan('mmhelper doctor') + '      - Run health check');
-    logger.info('  ' + chalk.cyan('mmhelper --help') + '       - Show all commands');
-  } catch (error) {
-    logger.blank();
-    logger.error('Failed to apply configuration.');
-    if (error instanceof Error) {
-      logger.error(error.message);
+  const { action } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'action',
+      message: chalk.bold.cyan('Select action:'),
+      choices: [
+        {
+          name: chalk.green('🔄 Configuration Refresh') + ' - ' + chalk.gray('Update Claude Code\'s MiniMax configuration'),
+          value: 'refresh',
+          short: 'Configuration Refresh'
+        },
+        {
+          name: chalk.red('🗑️  Unload Configuration') + ' - ' + chalk.gray('Remove MiniMax configuration from Claude Code'),
+          value: 'unload',
+          short: 'Unload Configuration'
+        },
+        {
+          name: chalk.blue('🔌 MCP Configuration') + ' - ' + chalk.gray('Manage Model Context Protocol'),
+          value: 'mcp',
+          short: 'MCP Configuration'
+        },
+        {
+          name: chalk.yellow('🏪 Plugin Marketplace') + ' - ' + chalk.gray('Browse and install plugins (Coming soon)'),
+          value: 'marketplace',
+          short: 'Plugin Marketplace'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.cyan.bold('▶️  Start Claude Code') + ' - ' + chalk.gray('Open a new terminal and run: claude'),
+          value: 'start-claude',
+          short: 'Start Claude Code'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('❌ Exit'),
+          value: 'exit',
+          short: 'Exit'
+        }
+      ]
     }
+  ]);
+
+  logger.blank();
+
+  switch (action) {
+    case 'refresh':
+      await authApply();
+      await showActionMenu(config);
+      break;
+    case 'unload':
+      const { authRevoke } = await import('./auth.js');
+      await authRevoke();
+      await runInitWizard();
+      break;
+    case 'mcp':
+      await handleMCPMenu(config);
+      break;
+    case 'marketplace':
+      console.log(chalk.yellow('  🏪 Plugin Marketplace coming soon!'));
+      await promptContinue();
+      await showActionMenu(config);
+      break;
+    case 'start-claude':
+      console.log(chalk.cyan('  💡 To start Claude Code:'));
+      console.log(chalk.white('     1. Open a new terminal in your workspace'));
+      console.log(chalk.cyan('     2. Run: ') + chalk.white.bold('claude'));
+      logger.blank();
+      await promptContinue();
+      await showActionMenu(config);
+      break;
+    case 'exit':
+      console.log(chalk.gray('👋 Goodbye!'));
+      break;
   }
+}
+
+async function handleMCPMenu(config: any): Promise<void> {
+  const { isMCPEnabled } = await import('../utils/config.js');
+  const mcpEnabled = await isMCPEnabled();
+
+  logger.blank();
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔌 MCP Configuration                                      ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+
+  const status = mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled');
+  console.log(chalk.white('  MCP Status: ') + status);
+  logger.blank();
+
+  if (mcpEnabled) {
+    console.log(chalk.gray('  Available Tools:'));
+    console.log(chalk.cyan('    • ') + chalk.white('web_search') + chalk.gray(' - Search the web'));
+    console.log(chalk.cyan('    • ') + chalk.white('understand_image') + chalk.gray(' - Analyze images'));
+    logger.blank();
+  }
+
+  const { action } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'action',
+      message: chalk.bold.cyan('MCP Management:'),
+      choices: mcpEnabled ? [
+        {
+          name: chalk.red('🔴 Disable MCP') + ' - ' + chalk.gray('Remove MCP from Claude Code'),
+          value: 'disable',
+          short: 'Disable MCP'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('⬅️  Back'),
+          value: 'back',
+          short: 'Back'
+        }
+      ] : [
+        {
+          name: chalk.green('🟢 Enable MCP') + ' - ' + chalk.gray('Add web_search & understand_image'),
+          value: 'enable',
+          short: 'Enable MCP'
+        },
+        new inquirer.Separator(),
+        {
+          name: chalk.gray('⬅️  Back'),
+          value: 'back',
+          short: 'Back'
+        }
+      ]
+    }
+  ]);
+
+  logger.blank();
+
+  switch (action) {
+    case 'enable':
+      await authMCPEnable();
+      await promptContinue();
+      await showActionMenu(config);
+      break;
+    case 'disable':
+      const { authMCPDisable } = await import('./auth.js');
+      await authMCPDisable();
+      await promptContinue();
+      await showActionMenu(config);
+      break;
+    case 'back':
+      await showActionMenu(config);
+      break;
+  }
+}
+
+async function promptReturnToMenu(): Promise<void> {
+  const { returnMenu } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'returnMenu',
+      message: 'Return to main menu?',
+      default: true
+    }
+  ]);
+
+  if (returnMenu) {
+    await runInitWizard();
+  }
+}
+
+async function promptContinue(): Promise<void> {
+  await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'continue',
+      message: 'Press Enter to continue...'
+    }
+  ]);
 }
