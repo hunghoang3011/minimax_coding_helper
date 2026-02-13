@@ -1,6 +1,6 @@
 {
   "name": "@hunghoang3011/minimax-coding-helper",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "A CLI helper for MiniMax Coding Plan Users to configure Claude Code with MiniMax-M2.1 model",
   "main": "dist/index.js",
   "bin": {

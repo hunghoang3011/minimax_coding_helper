@@ -65,7 +65,7 @@ export async function authSet(apiKey?: string, region?: 'international' | 'china
   config.base_url = region === 'international'
     ? 'https://api.minimax.io/anthropic'
     : 'https://api.minimaxi.com/anthropic';
-  config.model = 'MiniMax-M2.1';
+  config.model = 'MiniMax-M2.5';
   config.api_timeout_ms = '3000000';
 
   await saveConfig(config);
@@ -213,7 +213,7 @@ export async function authApply(): Promise<void> {
     logger.info(`  Base URL:  ${chalk.cyan(envConfig.ANTHROPIC_BASE_URL)}`);
     logger.info(`  Model:     ${chalk.cyan(envConfig.ANTHROPIC_MODEL)}`);
     logger.blank();
-    logger.success('You can now use Claude Code with MiniMax-M2.1!');
+    logger.success('You can now use Claude Code with MiniMax-M2.5!');
     logger.info('Restart Claude Code if it\'s currently running.');
   } catch (error) {
     spinner.fail('Failed to apply configuration.');

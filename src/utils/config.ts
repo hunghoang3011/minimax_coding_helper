@@ -17,7 +17,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.yaml');
 
 export const DEFAULT_BASE_URL_INTERNATIONAL = 'https://api.minimax.io/anthropic';
 export const DEFAULT_BASE_URL_CHINA = 'https://api.minimaxi.com/anthropic';
-export const DEFAULT_MODEL = 'MiniMax-M2.1';
+export const DEFAULT_MODEL = 'MiniMax-M2.5';
 export const DEFAULT_API_TIMEOUT = '3000000';
 
 const DEFAULT_CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude');
