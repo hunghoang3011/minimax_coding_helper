@@ -202,6 +202,13 @@ export async function authRevoke(keepSettings: boolean = false): Promise<void> {
   ]);
 
   if (restoreClaude) {
+    // Disable MCP before cleaning up settings
+    try {
+      await disableMCP();
+    } catch {
+      // MCP may not be enabled, continue cleanup
+    }
+
     const claudeSettings = await loadClaudeSettings();
     if (claudeSettings?.env) {
       delete claudeSettings.env.ANTHROPIC_BASE_URL;
@@ -213,6 +220,12 @@ export async function authRevoke(keepSettings: boolean = false): Promise<void> {
       delete claudeSettings.env.ANTHROPIC_DEFAULT_SONNET_MODEL;
       delete claudeSettings.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
       delete claudeSettings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
+      delete claudeSettings.model;
+
+      // Clean up empty env object
+      if (claudeSettings.env && Object.keys(claudeSettings.env).length === 0) {
+        delete claudeSettings.env;
+      }
 
       await saveClaudeSettings(claudeSettings);
       logger.success('Claude Code settings restored.');
@@ -410,6 +423,10 @@ export async function authUnload(removeAll: boolean = false): Promise<void> {
       delete claudeSettings.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
       delete claudeSettings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
       delete claudeSettings.model;
+
+      if (claudeSettings.env && Object.keys(claudeSettings.env).length === 0) {
+        delete claudeSettings.env;
+      }
 
       await saveClaudeSettings(claudeSettings);
     }

@@ -136,6 +136,22 @@ export async function saveClaudeSettings(settings: ClaudeSettings): Promise<void
   }
 }
 
+// Direct write — no re-read/merge. Use for removal operations.
+export async function writeClaudeSettingsDirect(settings: ClaudeSettings): Promise<void> {
+  try {
+    const settingsPath = getClaudeSettingsPath();
+    await fs.ensureDir(DEFAULT_CLAUDE_CONFIG_PATH);
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify(settings, null, 2),
+      'utf-8'
+    );
+  } catch (error) {
+    console.error('Error writing Claude settings:', error);
+    throw error;
+  }
+}
+
 export function getBaseUrl(region: 'international' | 'china'): string {
   return region === 'international'
     ? DEFAULT_BASE_URL_INTERNATIONAL
@@ -247,6 +263,21 @@ export async function saveClaudeJson(config: ClaudeMCPConfig): Promise<void> {
   }
 }
 
+// Direct write — no re-read/merge. Use for removal operations.
+export async function writeClaudeJsonDirect(config: ClaudeMCPConfig): Promise<void> {
+  try {
+    const jsonPath = getClaudeJsonPath();
+    await fs.writeFile(
+      jsonPath,
+      JSON.stringify(config, null, 2),
+      'utf-8'
+    );
+  } catch (error) {
+    console.error('Error writing Claude JSON:', error);
+    throw error;
+  }
+}
+
 export async function enableMCP(config: MiniMaxConfig): Promise<void> {
   const apiHost = config.region === 'international'
     ? 'https://api.minimax.io'
@@ -281,7 +312,7 @@ export async function disableMCP(): Promise<void> {
       delete config.mcpServers;
     }
 
-    await saveClaudeJson(config);
+    await writeClaudeJsonDirect(config);
   }
 }
 
@@ -342,6 +373,22 @@ export async function saveVSCodeSettings(settings: VSCodeSettings): Promise<void
   }
 }
 
+// Direct write — no re-read/merge. Use for removal operations.
+export async function writeVSCodeSettingsDirect(settings: VSCodeSettings): Promise<void> {
+  try {
+    const settingsPath = getVSCodeSettingsPath();
+    await fs.ensureDir(DEFAULT_VSCODE_SETTINGS_PATH);
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify(settings, null, 2),
+      'utf-8'
+    );
+  } catch (error) {
+    console.error('Error writing VS Code settings:', error);
+    throw error;
+  }
+}
+
 export function getVSCodeEnvConfig(config: MiniMaxConfig): VSCodeEnvironmentVariable[] {
   return [
     { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_BASE_URL`, value: config.base_url },
@@ -372,7 +419,7 @@ export async function removeVSCodeExtensionConfig(): Promise<void> {
   delete settings['claudeCode.selectedModel'];
   delete settings['claudeCode.environmentVariables'];
 
-  await saveVSCodeSettings(settings);
+  await writeVSCodeSettingsDirect(settings);
 }
 
 export async function isVSCodeExtensionConfigured(): Promise<boolean> {

@@ -332,9 +332,9 @@ async function showActionMenu(config: any): Promise<void> {
       await showActionMenu(config);
       break;
     case 'unload':
-      const { authRevoke } = await import('./auth.js');
-      await authRevoke();
-      await runInitWizard();
+      const { authUnload } = await import('./auth.js');
+      await authUnload();
+      await showActionMenu(config);
       break;
     case 'mcp':
       await handleMCPMenu(config);
