@@ -192,23 +192,6 @@ export async function backupClaudeSettings(): Promise<string | null> {
   return null;
 }
 
-export async function restoreClaudeSettings(backupPath: string): Promise<void> {
-  const settingsPath = getClaudeSettingsPath();
-  const backupExists = await fs.pathExists(backupPath);
-
-  if (backupExists) {
-    await fs.copy(backupPath, settingsPath);
-  }
-}
-
-export async function listBackups(): Promise<string[]> {
-  const configDir = getConfigDir();
-  const files = await fs.readdir(configDir);
-  return files
-    .filter(f => f.startsWith('settings.backup.') && f.endsWith('.json'))
-    .map(f => path.join(configDir, f));
-}
-
 // MCP Configuration
 export interface MCPServerConfig {
   command: string;

@@ -1,285 +1,98 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { authSet, authApply, authMCPEnable } from './auth.js';
-import { loadConfig } from '../utils/config.js';
+import { authSet, authApply, authMCPEnable, authUnload } from './auth.js';
+import { loadConfig, saveConfig, isMCPEnabled, isVSCodeExtensionConfigured } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
 export async function runInitWizard(): Promise<void> {
-  while (true) {
-    // Show welcome header
-    logger.blank();
-    console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.cyan.bold('║') + chalk.white.bold('        🤖 MiniMax Helper for Claude Code                ') + chalk.cyan.bold('║'));
-    console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝'));
-    logger.blank();
+  const config = await loadConfig();
 
-    // Check existing config
-    const existingConfig = await loadConfig();
-    const hasConfig = existingConfig && existingConfig.api_key;
-
-    if (hasConfig) {
-      const maskedKey = existingConfig.api_key!.slice(0, 4) + '****';
-      console.log(chalk.white('  Current Configuration:'));
-      console.log(chalk.cyan('  Coding Plan: ') + chalk.white.bold('MiniMax Coding Plan Global'));
-      console.log(chalk.cyan('  API Key: ') + chalk.green('Set (' + maskedKey + ')'));
-      logger.blank();
-    }
-
-    // Main menu
-    const { action } = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'action',
-        message: chalk.bold.cyan('Select operation:'),
-        choices: [
-          {
-            name: chalk.cyan('🔑') + ' API Key - ' + chalk.white('Set your MiniMax API key'),
-            value: 'api-key',
-            short: 'API Key'
-          },
-          {
-            name: chalk.yellow('🌍') + ' Coding Plan - ' + chalk.white('Select your coding plan region'),
-            value: 'coding-plan',
-            short: 'Coding Plan'
-          },
-          {
-            name: chalk.green('🛠️ ') + ' Coding Tool - ' + chalk.white('Configure Claude Code integration'),
-            value: 'coding-tool',
-            short: 'Coding Tool'
-          },
-          new inquirer.Separator(),
-          {
-            name: chalk.gray('❌ Exit'),
-            value: 'exit',
-            short: 'Exit'
-          }
-        ]
-      }
-    ]);
-
-    logger.blank();
-
-    switch (action) {
-      case 'api-key':
-        await handleApiKey();
-        continue;
-      case 'coding-plan':
-        await handleCodingPlan();
-        continue;
-      case 'coding-tool':
-        await handleCodingTool();
-        continue;
-      case 'exit':
-        console.log(chalk.gray('👋 Goodbye!'));
-        break;
-    }
-    break;
+  if (config?.api_key) {
+    await runDashboard();
+  } else {
+    await runWizard();
   }
 }
 
-async function handleApiKey(): Promise<void> {
+async function runWizard(): Promise<void> {
   logger.blank();
-  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
-  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔑 API Key Configuration                                 ') + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
+  console.log(chalk.cyan.bold('║') + chalk.white.bold('        🤖 MiniMax Helper — First-Time Setup              ') + chalk.cyan.bold('║'));
+  console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝'));
   logger.blank();
 
-  const config = await loadConfig();
-
-  if (config && config.api_key) {
-    const maskedKey = config.api_key.slice(0, 4) + '****';
-    console.log(chalk.white('  Current API Key: ') + chalk.green(maskedKey));
-    logger.blank();
-
-    const { changeKey } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'changeKey',
-        message: 'Do you want to change your API key?',
-        default: false
-      }
-    ]);
-
-    if (!changeKey) {
-      return;
-    }
-  }
-
+  console.log(chalk.white('  Welcome! Let\'s set up MiniMax for Claude Code.'));
   console.log(chalk.white('  Get your API key from: ') + chalk.cyan('https://platform.minimax.io/'));
   logger.blank();
 
   try {
     await authSet();
-    logger.blank();
-    console.log(chalk.green('  ✅ API Key configured successfully!'));
-    await promptReturnToMenu();
   } catch (error) {
-    console.log(chalk.red('  ❌ Failed to set API key.'));
-    await promptReturnToMenu();
-  }
-}
-
-async function handleCodingPlan(): Promise<void> {
-  logger.blank();
-  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
-  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🌍 Coding Plan Selection                                 ') + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
-  logger.blank();
-
-  const config = await loadConfig();
-
-  if (config) {
-    console.log(chalk.white('  Current Coding Plan: ') + chalk.cyan.bold(config.region === 'international' ? '🌍 MiniMax Coding Plan Global' : '🇨🇳 MiniMax Coding Plan China'));
-    logger.blank();
-  }
-
-  const { region } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'region',
-      message: chalk.bold.cyan('Select your coding plan:'),
-      choices: [
-        {
-          name: '🌍 MiniMax Coding Plan Global - International',
-          value: 'international'
-        },
-        {
-          name: '🇨🇳 MiniMax Coding Plan China - China Region',
-          value: 'china'
-        }
-      ],
-      default: config?.region || 'international'
-    }
-  ]);
-
-  // Save region
-  if (config) {
-    config.region = region;
-    config.base_url = region === 'international'
-      ? 'https://api.minimax.io/anthropic'
-      : 'https://api.minimaxi.com/anthropic';
-
-    const { saveConfig } = await import('../utils/config.js');
-    await saveConfig(config);
-
-    logger.blank();
-    console.log(chalk.green('  ✅ Coding Plan updated successfully!'));
-    await promptReturnToMenu();
-  } else {
-    console.log(chalk.yellow('  ⚠️  Please set your API key first.'));
-    await promptReturnToMenu();
-  }
-}
-
-async function handleCodingTool(): Promise<void> {
-  logger.blank();
-  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
-  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🛠️  Coding Tool Configuration                              ') + chalk.bold.cyan('│'));
-  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
-  logger.blank();
-
-  const config = await loadConfig();
-
-  if (!config || !config.api_key) {
-    console.log(chalk.yellow('  ⚠️  Please configure your API key first.'));
-    await promptReturnToMenu();
+    console.log(chalk.red('  ❌ Failed to set API key. Please try again with: ') + chalk.cyan('mmhelper init'));
+    console.log(chalk.gray('  Try: mmhelper doctor to diagnose issues'));
     return;
   }
 
-  const maskedKey = config.api_key.slice(0, 4) + '****';
-
-  // Show current config
-  console.log(chalk.white('  Chelper Configuration:'));
-  console.log(chalk.cyan('  Coding Plan: ') + chalk.white.bold(config.region === 'international' ? '🌍 MiniMax Coding Plan Global' : '🇨🇳 MiniMax Coding Plan China'));
-  console.log(chalk.cyan('  API Key: ') + chalk.green('Set (' + maskedKey + ')'));
   logger.blank();
-
-  const { tool } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'tool',
-      message: chalk.bold.cyan('Select coding tool to configure:'),
-      choices: [
-        {
-          name: chalk.green('💻') + ' Claude Code - ' + chalk.white('Configure Claude Code integration'),
-          value: 'claude-code',
-          short: 'Claude Code'
-        },
-        new inquirer.Separator(),
-        {
-          name: chalk.gray('⬅️  Back'),
-          value: 'back',
-          short: 'Back'
-        }
-      ]
-    }
-  ]);
-
-  logger.blank();
-
-  if (tool === 'back') {
-    return;
-  }
-
-  if (tool === 'claude-code') {
-    await configureClaudeCode(config);
-  }
-}
-
-async function configureClaudeCode(config: any): Promise<void> {
-  logger.blank();
-  console.log(chalk.yellow('  ⚠️  Warning: You are modifying the Claude Code global configuration.'));
-  console.log(chalk.white('  Changes will affect all workspaces.'));
-  logger.blank();
-
-  const { confirm } = await inquirer.prompt([
+  const { enableMCP } = await inquirer.prompt([
     {
       type: 'confirm',
-      name: 'confirm',
-      message: chalk.bold.yellow('Continue?'),
+      name: 'enableMCP',
+      message: 'Enable MCP (web_search & understand_image tools)?',
       default: true
     }
   ]);
 
-  if (!confirm) {
-    await handleCodingTool();
-    return;
-  }
-
-  // Apply configuration
-  try {
-    await authApply();
-
-    logger.blank();
-    console.log(chalk.bold.cyan('  ╔════════════════════════════════════════════════════════════╗'));
-    console.log(chalk.bold.cyan('  ║') + chalk.white.bold('  ✅ Configuration synchronized                           ') + chalk.bold.cyan('║'));
-    console.log(chalk.bold.cyan('  ╚════════════════════════════════════════════════════════════╝'));
-    logger.blank();
-
-    // Ask about MCP
-    const { enableMCP } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'enableMCP',
-        message: 'Enable MCP (web_search & understand_image tools)?',
-        default: true
-      }
-    ]);
-
-    if (enableMCP) {
+  if (enableMCP) {
+    try {
       await authMCPEnable();
+    } catch {
+      console.log(chalk.yellow('  ⚠️  MCP setup failed. You can enable it later from the dashboard.'));
     }
-
-    await showActionMenu(config);
-  } catch (error) {
-    console.log(chalk.red('  ❌ Failed to configure Claude Code.'));
-    await promptReturnToMenu();
   }
+
+  logger.blank();
+  console.log(chalk.bold.green('  ╔════════════════════════════════════════════════════════════╗'));
+  console.log(chalk.bold.green('  ║') + chalk.white.bold('  ✅ Setup Complete!                                       ') + chalk.bold.green('║'));
+  console.log(chalk.bold.green('  ╚════════════════════════════════════════════════════════════╝'));
+  logger.blank();
+  console.log(chalk.white('  You can now use Claude Code with MiniMax-M2.7!'));
+  console.log(chalk.white('  Run ') + chalk.cyan.bold('claude') + chalk.white(' in any workspace to start coding.'));
+  logger.blank();
+
+  await promptContinue();
+  await runDashboard();
 }
 
-async function showActionMenu(config: any): Promise<void> {
+export async function runDashboard(): Promise<void> {
   while (true) {
+    const config = await loadConfig();
+
+    if (!config || !config.api_key) {
+      console.log(chalk.yellow('⚠️  No configuration found.'));
+      console.log(chalk.gray('   Running setup wizard...'));
+      logger.blank();
+      await runWizard();
+      return;
+    }
+
+    const maskedKey = config.api_key.slice(0, 4) + '****';
+    const mcpEnabled = await isMCPEnabled();
+    const vscodeEnabled = await isVSCodeExtensionConfigured();
+
     logger.blank();
+    console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
+    console.log(chalk.cyan.bold('║') + chalk.white.bold('        🤖 MiniMax Configuration Dashboard              ') + chalk.cyan.bold('║'));
+    console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝'));
+    logger.blank();
+
+    console.log(chalk.white('  Current Configuration:'));
+    console.log(chalk.cyan('  Model:       ') + chalk.white.bold(config.model || 'MiniMax-M2.7'));
+    console.log(chalk.cyan('  Region:      ') + chalk.white.bold(config.region === 'international' ? '🌍 International' : '🇨🇳 China'));
+    console.log(chalk.cyan('  API Key:     ') + chalk.green('Set (' + maskedKey + ')'));
+    console.log(chalk.cyan('  Claude Code: ') + chalk.green.bold('✅ Configured'));
+    console.log(chalk.cyan('  VS Code:     ') + (vscodeEnabled ? chalk.green.bold('✅ Configured') : chalk.gray('❌ Not Configured')));
+    console.log(chalk.cyan('  MCP Status:  ') + (mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled')));
     logger.blank();
 
     const { action } = await inquirer.prompt([
@@ -289,30 +102,40 @@ async function showActionMenu(config: any): Promise<void> {
         message: chalk.bold.cyan('Select action:'),
         choices: [
           {
-            name: chalk.green('🔄 Configuration Refresh') + ' - ' + chalk.gray('Update Claude Code\'s MiniMax configuration'),
+            name: chalk.green('🔄 Refresh Configuration') + ' - ' + chalk.gray('Reapply MiniMax config to Claude Code'),
             value: 'refresh',
-            short: 'Configuration Refresh'
+            short: 'Refresh'
           },
           {
-            name: chalk.red('🗑️  Unload Configuration') + ' - ' + chalk.gray('Remove MiniMax configuration from Claude Code'),
+            name: chalk.red('🗑️  Unload Configuration') + ' - ' + chalk.gray('Remove MiniMax config from Claude Code'),
             value: 'unload',
-            short: 'Unload Configuration'
+            short: 'Unload'
           },
           {
             name: chalk.blue('🔌 MCP Configuration') + ' - ' + chalk.gray('Manage Model Context Protocol'),
             value: 'mcp',
-            short: 'MCP Configuration'
+            short: 'MCP'
           },
           {
-            name: chalk.yellow('🏪 Plugin Marketplace') + ' - ' + chalk.gray('Browse and install plugins (Coming soon)'),
-            value: 'marketplace',
-            short: 'Plugin Marketplace'
+            name: chalk.yellow('🔑 Change API Key') + ' - ' + chalk.gray('Update your MiniMax API key'),
+            value: 'change-key',
+            short: 'Change Key'
+          },
+          {
+            name: chalk.yellow('🌍 Change Region') + ' - ' + chalk.gray('Switch between International / China'),
+            value: 'change-region',
+            short: 'Change Region'
           },
           new inquirer.Separator(),
           {
             name: chalk.cyan.bold('▶️  Start Claude Code') + ' - ' + chalk.gray('Open a new terminal and run: claude'),
             value: 'start-claude',
-            short: 'Start Claude Code'
+            short: 'Start Claude'
+          },
+          {
+            name: chalk.red.bold('💣 Reset (Remove All)') + ' - ' + chalk.gray('Remove all MiniMax configuration'),
+            value: 'reset',
+            short: 'Reset'
           },
           new inquirer.Separator(),
           {
@@ -328,25 +151,25 @@ async function showActionMenu(config: any): Promise<void> {
 
     switch (action) {
       case 'refresh':
-        await authApply();
+        await handleRefresh();
         continue;
       case 'unload':
-        const { authUnload } = await import('./auth.js');
-        await authUnload();
+        await handleUnload();
         continue;
       case 'mcp':
-        await handleMCPMenu(config);
+        await handleMCPMenu();
         continue;
-      case 'marketplace':
-        console.log(chalk.yellow('  🏪 Plugin Marketplace coming soon!'));
-        await promptContinue();
+      case 'change-key':
+        await handleChangeKey();
+        continue;
+      case 'change-region':
+        await handleChangeRegion();
         continue;
       case 'start-claude':
-        console.log(chalk.cyan('  💡 To start Claude Code:'));
-        console.log(chalk.white('     1. Open a new terminal in your workspace'));
-        console.log(chalk.cyan('     2. Run: ') + chalk.white.bold('claude'));
-        logger.blank();
-        await promptContinue();
+        await handleStartClaude();
+        continue;
+      case 'reset':
+        await handleReset();
         continue;
       case 'exit':
         console.log(chalk.gray('👋 Goodbye!'));
@@ -356,9 +179,48 @@ async function showActionMenu(config: any): Promise<void> {
   }
 }
 
-async function handleMCPMenu(config: any): Promise<void> {
+async function handleRefresh(): Promise<void> {
+  try {
+    await authApply();
+    logger.blank();
+    console.log(chalk.green('  ✅ Configuration refreshed successfully!'));
+    await promptContinue();
+  } catch (error) {
+    console.log(chalk.red('  ❌ Failed to refresh configuration.'));
+    console.log(chalk.gray('  Try: mmhelper doctor to check setup'));
+    await promptContinue();
+  }
+}
+
+async function handleUnload(): Promise<void> {
+  logger.blank();
+  console.log(chalk.yellow('  ⚠️  This will remove MiniMax configuration from Claude Code.'));
+  console.log(chalk.white('  Your saved API key will be kept for future use.'));
+  logger.blank();
+
+  const { confirm } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'confirm',
+      message: chalk.bold.yellow('Continue?'),
+      default: false
+    }
+  ]);
+
+  if (!confirm) return;
+
+  try {
+    await authUnload();
+    await promptContinue();
+  } catch (error) {
+    console.log(chalk.red('  ❌ Failed to unload configuration.'));
+    console.log(chalk.gray('  Try: mmhelper reset to force clean'));
+    await promptContinue();
+  }
+}
+
+async function handleMCPMenu(): Promise<void> {
   while (true) {
-    const { isMCPEnabled } = await import('../utils/config.js');
     const mcpEnabled = await isMCPEnabled();
 
     logger.blank();
@@ -415,14 +277,27 @@ async function handleMCPMenu(config: any): Promise<void> {
 
     switch (action) {
       case 'enable':
-        await authMCPEnable();
-        await promptContinue();
+        try {
+          await authMCPEnable();
+          await promptContinue();
+        } catch {
+          console.log(chalk.red('  ❌ Failed to enable MCP.'));
+          console.log(chalk.gray('  Try: mmhelper auth mcp enable'));
+          await promptContinue();
+        }
         continue;
-      case 'disable':
+      case 'disable': {
         const { authMCPDisable } = await import('./auth.js');
-        await authMCPDisable();
-        await promptContinue();
+        try {
+          await authMCPDisable();
+          await promptContinue();
+        } catch {
+          console.log(chalk.red('  ❌ Failed to disable MCP.'));
+          console.log(chalk.gray('  Try: mmhelper auth mcp disable'));
+          await promptContinue();
+        }
         continue;
+      }
       case 'back':
         break;
     }
@@ -430,24 +305,91 @@ async function handleMCPMenu(config: any): Promise<void> {
   }
 }
 
-async function promptReturnToMenu(): Promise<void> {
-  const { returnMenu } = await inquirer.prompt([
+async function handleChangeKey(): Promise<void> {
+  logger.blank();
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🔑 Change API Key                                        ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+
+  try {
+    await authSet();
+    logger.blank();
+    console.log(chalk.green('  ✅ API Key updated and applied!'));
+    await promptContinue();
+  } catch (error) {
+    console.log(chalk.red('  ❌ Failed to update API key.'));
+    console.log(chalk.gray('  Try: mmhelper auth set <key>'));
+    await promptContinue();
+  }
+}
+
+async function handleChangeRegion(): Promise<void> {
+  const config = await loadConfig();
+  if (!config) return;
+
+  logger.blank();
+  console.log(chalk.bold.cyan('┌─────────────────────────────────────────────────────────┐'));
+  console.log(chalk.bold.cyan('│') + chalk.white.bold('  🌍 Change Region                                         ') + chalk.bold.cyan('│'));
+  console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
+  logger.blank();
+
+  console.log(chalk.white('  Current: ') + chalk.cyan.bold(config.region === 'international' ? '🌍 International' : '🇨🇳 China'));
+  logger.blank();
+
+  const { region } = await inquirer.prompt([
     {
-      type: 'confirm',
-      name: 'returnMenu',
-      message: 'Return to main menu?',
-      default: true
+      type: 'list',
+      name: 'region',
+      message: chalk.bold.cyan('Select region:'),
+      choices: [
+        { name: '🌍 International (api.minimax.io)', value: 'international' },
+        { name: '🇨🇳 China (api.minimaxi.com)', value: 'china' }
+      ],
+      default: config.region || 'international'
     }
   ]);
 
+  config.region = region;
+  config.base_url = region === 'international'
+    ? 'https://api.minimax.io/anthropic'
+    : 'https://api.minimaxi.com/anthropic';
+
+  await saveConfig(config);
+
+  try {
+    await authApply();
+    logger.blank();
+    console.log(chalk.green('  ✅ Region updated and configuration reapplied!'));
+    await promptContinue();
+  } catch (error) {
+    console.log(chalk.red('  ❌ Region saved but failed to reapply configuration.'));
+    await promptContinue();
+  }
+}
+
+async function handleStartClaude(): Promise<void> {
+  logger.blank();
+  console.log(chalk.cyan('  💡 To start Claude Code:'));
+  console.log(chalk.white('     1. Open a new terminal in your workspace'));
+  console.log(chalk.cyan('     2. Run: ') + chalk.white.bold('claude'));
+  logger.blank();
+  await promptContinue();
+}
+
+async function handleReset(): Promise<void> {
+  const { runReset } = await import('./reset.js');
+  await runReset();
+  await promptContinue();
 }
 
 async function promptContinue(): Promise<void> {
   await inquirer.prompt([
     {
-      type: 'input',
+      type: 'confirm',
       name: 'continue',
-      message: 'Press Enter to continue...'
+      message: 'Press Enter to continue...',
+      default: true
     }
   ]);
 }
