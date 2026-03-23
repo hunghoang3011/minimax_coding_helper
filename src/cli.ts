@@ -15,6 +15,8 @@ import {
 } from './commands/auth.js';
 import { runDoctor } from './commands/doctor.js';
 import { configMenu } from './commands/config.js';
+import { runReset } from './commands/reset.js';
+import { runStatus } from './commands/status.js';
 
 const program = new Command();
 
@@ -30,6 +32,36 @@ program
   .action(async () => {
     try {
       await runInitWizard();
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+// Status command
+program
+  .command('status')
+  .description('Show current MiniMax configuration status')
+  .option('--json', 'Output as JSON for scripting')
+  .action(async (options) => {
+    try {
+      await runStatus(options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+// Reset command
+program
+  .command('reset')
+  .description('Remove all MiniMax configuration and restore vanilla Claude Code')
+  .option('-d, --dry-run', 'Preview changes without executing')
+  .option('-f, --full', 'Also remove API key and all backups')
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .action(async (options) => {
+    try {
+      await runReset(options);
     } catch (error) {
       console.error(chalk.red('Error:'), error);
       process.exit(1);
