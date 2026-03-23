@@ -1,20 +1,18 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { authSet, authApply, authRevoke, authMCPEnable, authMCPDisable } from './auth.js';
-import { loadConfig, isMCPEnabled } from '../utils/config.js';
+import { authSet, authApply, authRevoke, authMCPEnable, authMCPDisable, authUnload } from './auth.js';
+import { loadConfig, isMCPEnabled, isVSCodeExtensionConfigured } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
 export async function configMenu(): Promise<void> {
   console.clear();
 
-  // Show header
   logger.blank();
   console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
   console.log(chalk.cyan.bold('║') + chalk.white.bold('        🤖 MiniMax Configuration Manager               ') + chalk.cyan.bold('║'));
   console.log(chalk.cyan.bold('╚════════════════════════════════════════════════════════════╝'));
   logger.blank();
 
-  // Check existing config
   const config = await loadConfig();
 
   if (!config || !config.api_key) {
@@ -24,18 +22,19 @@ export async function configMenu(): Promise<void> {
     return;
   }
 
-  // Show current status
   const maskedKey = config.api_key.slice(0, 4) + '****';
   const mcpEnabled = await isMCPEnabled();
+  const vscodeEnabled = await isVSCodeExtensionConfigured();
 
   console.log(chalk.white('  Current Configuration:'));
   console.log(chalk.cyan('  Coding Plan: ') + chalk.white.bold(config.region === 'international' ? '🌍 MiniMax Coding Plan Global' : '🇨🇳 MiniMax Coding Plan China'));
   console.log(chalk.cyan('  API Key: ') + chalk.green('Set (' + maskedKey + ')'));
+  console.log(chalk.cyan('  Claude Code: ') + chalk.green.bold('✅ Configured'));
+  console.log(chalk.cyan('  VS Code Extension: ') + (vscodeEnabled ? chalk.green.bold('✅ Configured') : chalk.gray('❌ Not Configured')));
   console.log(chalk.cyan('  MCP Status: ') + (mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled')));
   logger.blank();
   logger.blank();
 
-  // Show action menu
   await showActionMenu(config);
 }
 
@@ -148,7 +147,11 @@ async function handleUnload(): Promise<void> {
   console.log(chalk.bold.cyan('│') + chalk.white.bold('  🗑️  Unload Configuration                                  ') + chalk.bold.cyan('│'));
   console.log(chalk.bold.cyan('└─────────────────────────────────────────────────────────┘'));
   logger.blank();
-  console.log(chalk.yellow('  ⚠️  This will remove MiniMax configuration from Claude Code.'));
+  console.log(chalk.yellow('  ⚠️  This will remove MiniMax configuration from:'));
+  console.log(chalk.white('    • Claude Code settings'));
+  console.log(chalk.white('    • VS Code extension'));
+  console.log(chalk.white('    • MCP configuration'));
+  logger.blank();
   console.log(chalk.white('  Your saved API key will be kept for future use.'));
   logger.blank();
 
@@ -168,38 +171,7 @@ async function handleUnload(): Promise<void> {
   }
 
   try {
-    const { removeKey } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'removeKey',
-        message: chalk.bold.yellow('Also remove your saved API key?'),
-        default: false
-      }
-    ]);
-
-    if (removeKey) {
-      await authRevoke();
-    } else {
-      // Only remove from Claude settings
-      const { loadClaudeSettings, saveClaudeSettings } = await import('../utils/config.js');
-      const claudeSettings = await loadClaudeSettings();
-
-      if (claudeSettings?.env) {
-        delete claudeSettings.env.ANTHROPIC_BASE_URL;
-        delete claudeSettings.env.ANTHROPIC_AUTH_TOKEN;
-        delete claudeSettings.env.API_TIMEOUT_MS;
-        delete claudeSettings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
-        delete claudeSettings.env.ANTHROPIC_MODEL;
-        delete claudeSettings.env.ANTHROPIC_SMALL_FAST_MODEL;
-        delete claudeSettings.env.ANTHROPIC_DEFAULT_SONNET_MODEL;
-        delete claudeSettings.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
-        delete claudeSettings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
-
-        await saveClaudeSettings(claudeSettings);
-        logger.blank();
-        console.log(chalk.green('  ✅ MiniMax configuration removed from Claude Code.'));
-      }
-    }
+    await authUnload();
     await promptContinue();
     await configMenu();
   } catch (error) {

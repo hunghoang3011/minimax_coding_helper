@@ -10,17 +10,23 @@ export interface MiniMaxConfig {
   model: string;
   api_timeout_ms: string;
   claude_code_path: string;
+  // VS Code Extension support
+  vscode_extension_enabled?: boolean;
+  vscode_settings_path?: string;
 }
+
+// Storage key prefix to avoid conflicts
+export const STORAGE_KEY_PREFIX = 'MINIMAX_';
 
 const CONFIG_DIR = path.join(os.homedir(), '.minimax-helper');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.yaml');
 
 export const DEFAULT_BASE_URL_INTERNATIONAL = 'https://api.minimax.io/anthropic';
 export const DEFAULT_BASE_URL_CHINA = 'https://api.minimaxi.com/anthropic';
-export const DEFAULT_MODEL = 'MiniMax-M2.5';
+export const DEFAULT_MODEL = 'MiniMax-M2.7';
 export const DEFAULT_API_TIMEOUT = '3000000';
-
-const DEFAULT_CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude');
+export const DEFAULT_CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude');
+export const DEFAULT_VSCODE_SETTINGS_PATH = path.join(os.homedir(), '.vscode');
 
 export function getConfigDir(): string {
   return CONFIG_DIR;
@@ -88,6 +94,7 @@ export async function removeConfig(): Promise<void> {
 
 export interface ClaudeSettings {
   env?: Record<string, string>;
+  model?: string;
 }
 
 export async function loadClaudeSettings(): Promise<ClaudeSettings | null> {
@@ -281,4 +288,94 @@ export async function disableMCP(): Promise<void> {
 export async function isMCPEnabled(): Promise<boolean> {
   const config = await loadClaudeJson();
   return config?.mcpServers?.MiniMax !== undefined;
+}
+
+export function getVSCodeSettingsPath(): string {
+  return path.join(DEFAULT_VSCODE_SETTINGS_PATH, 'settings.json');
+}
+
+export interface VSCodeEnvironmentVariable {
+  name: string;
+  value: string;
+}
+
+export interface VSCodeSettings {
+  'claudeCode.selectedModel'?: string;
+  'claudeCode.environmentVariables'?: VSCodeEnvironmentVariable[];
+}
+
+export async function loadVSCodeSettings(): Promise<VSCodeSettings | null> {
+  try {
+    const settingsPath = getVSCodeSettingsPath();
+    const settingsExists = await fs.pathExists(settingsPath);
+    if (!settingsExists) {
+      return {};
+    }
+
+    const settingsContent = await fs.readFile(settingsPath, 'utf-8');
+    return JSON.parse(settingsContent) as VSCodeSettings;
+  } catch (error) {
+    console.error('Error loading VS Code settings:', error);
+    return null;
+  }
+}
+
+export async function saveVSCodeSettings(settings: VSCodeSettings): Promise<void> {
+  try {
+    const settingsPath = getVSCodeSettingsPath();
+    await fs.ensureDir(DEFAULT_VSCODE_SETTINGS_PATH);
+
+    const existingSettings = await loadVSCodeSettings() || {};
+    const mergedSettings = {
+      ...existingSettings,
+      ...settings
+    };
+
+    await fs.writeFile(
+      settingsPath,
+      JSON.stringify(mergedSettings, null, 2),
+      'utf-8'
+    );
+  } catch (error) {
+    console.error('Error saving VS Code settings:', error);
+    throw error;
+  }
+}
+
+export function getVSCodeEnvConfig(config: MiniMaxConfig): VSCodeEnvironmentVariable[] {
+  return [
+    { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_BASE_URL`, value: config.base_url },
+    { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_AUTH_TOKEN`, value: config.api_key },
+    { name: `${STORAGE_KEY_PREFIX}API_TIMEOUT_MS`, value: config.api_timeout_ms },
+    { name: `${STORAGE_KEY_PREFIX}CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, value: '1' },
+    { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_MODEL`, value: config.model },
+    { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_SMALL_FAST_MODEL`, value: config.model },
+    { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_DEFAULT_SONNET_MODEL`, value: config.model },
+    { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_DEFAULT_OPUS_MODEL`, value: config.model },
+    { name: `${STORAGE_KEY_PREFIX}ANTHROPIC_DEFAULT_HAIKU_MODEL`, value: config.model }
+  ];
+}
+
+export async function applyVSCodeExtensionConfig(config: MiniMaxConfig): Promise<void> {
+  const vscodeSettings: VSCodeSettings = {
+    'claudeCode.selectedModel': config.model,
+    'claudeCode.environmentVariables': getVSCodeEnvConfig(config)
+  };
+
+  await saveVSCodeSettings(vscodeSettings);
+}
+
+export async function removeVSCodeExtensionConfig(): Promise<void> {
+  const settings = await loadVSCodeSettings();
+  if (!settings) return;
+
+  delete settings['claudeCode.selectedModel'];
+  delete settings['claudeCode.environmentVariables'];
+
+  await saveVSCodeSettings(settings);
+}
+
+export async function isVSCodeExtensionConfigured(): Promise<boolean> {
+  const settings = await loadVSCodeSettings();
+  return !!(settings?.['claudeCode.selectedModel'] || settings?.['claudeCode.environmentVariables']);
 }

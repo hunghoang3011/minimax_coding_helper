@@ -7,7 +7,9 @@ import {
   loadConfig,
   loadClaudeSettings,
   getConfigFile,
-  getClaudeSettingsPath
+  getClaudeSettingsPath,
+  isVSCodeExtensionConfigured,
+  getVSCodeSettingsPath
 } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
@@ -45,7 +47,10 @@ export async function runDoctor(): Promise<void> {
   // Check 6: API key format
   checks.push(await checkApiKeyFormat());
 
-  // Check 7: MiniMax API connectivity
+  // Check 7: VS Code Extension configuration
+  checks.push(await checkVSCodeExtension());
+
+  // Check 8: MiniMax API connectivity
   checks.push(await checkApiConnectivity());
 
   // Print results
@@ -237,6 +242,37 @@ async function checkApiKeyFormat(): Promise<DoctorCheck> {
     name: 'API Key Format',
     status: 'pass',
     message: 'API key format looks valid'
+  };
+}
+
+async function checkVSCodeExtension(): Promise<DoctorCheck> {
+  const settingsPath = getVSCodeSettingsPath();
+  const settingsExist = await fs.pathExists(settingsPath);
+
+  if (!settingsExist) {
+    return {
+      name: 'VS Code Extension',
+      status: 'warn',
+      message: 'VS Code settings not found',
+      details: 'VS Code extension may not be installed or configured'
+    };
+  }
+
+  const isConfigured = await isVSCodeExtensionConfigured();
+
+  if (isConfigured) {
+    return {
+      name: 'VS Code Extension',
+      status: 'pass',
+      message: 'VS Code extension configured for MiniMax'
+    };
+  }
+
+  return {
+    name: 'VS Code Extension',
+    status: 'warn',
+    message: 'VS Code extension not configured for MiniMax',
+    details: `Run ${chalk.cyan('mmhelper auth apply')} to configure`
   };
 }
 

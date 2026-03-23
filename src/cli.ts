@@ -10,7 +10,8 @@ import {
   authApply,
   authPath,
   authMCPEnable,
-  authMCPDisable
+  authMCPDisable,
+  authUnload
 } from './commands/auth.js';
 import { runDoctor } from './commands/doctor.js';
 import { configMenu } from './commands/config.js';
@@ -20,7 +21,7 @@ const program = new Command();
 program
   .name('minimax-helper')
   .description('A CLI helper for MiniMax Coding Plan Users to configure Claude Code')
-  .version('1.0.0');
+  .version('1.1.0');
 
 // Init command
 program
@@ -84,6 +85,18 @@ authCommand
   .action(async () => {
     try {
       await authApply();
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+authCommand
+  .command('unload')
+  .description('Unload MiniMax configuration from Claude Code (keeps API key)')
+  .action(async () => {
+    try {
+      await authUnload();
     } catch (error) {
       console.error(chalk.red('Error:'), error);
       process.exit(1);

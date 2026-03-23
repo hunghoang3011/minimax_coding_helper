@@ -13,7 +13,7 @@
   [![Downloads](https://img.shields.io/npm/dm/@hunghoang3011/minimax-coding-helper.svg)](https://www.npmjs.com/package/@hunghoang3011/minimax-coding-helper)
 
   <!-- Description -->
-  **🚀 The ultimate CLI helper for MiniMax Coding Plan users to configure Claude Code with the powerful MiniMax-M2.5 model**
+  **🚀 The ultimate CLI helper for MiniMax Coding Plan users to configure Claude Code with the powerful MiniMax-M2.7 model**
 
   [Features](#-features) • [Quick Start](#-quick-start) • [Commands](#-commands) • [Configuration](#-configuration) • [FAQ](#-faq)
 
@@ -24,7 +24,7 @@
 ## ✨ Features
 
 - **🎯 Interactive Wizard** - User-friendly onboarding with step-by-step guidance
-- **⚡ MiniMax-M2.5 Integration** - Harness the power of MiniMax's advanced coding model in Claude Code
+- **⚡ MiniMax-M2.7 Integration** - Harness the power of MiniMax's advanced coding model in Claude Code
 - **🔌 MCP Support** - Enable MiniMax's native MCP tools (`web_search`, `understand_image`)
 - **🔐 Secure API Key Management** - Your API keys are stored locally and encrypted
 - **🌍 Multi-Region Support** - Choose between International and China regions for optimal performance
@@ -95,7 +95,7 @@ If Claude Code is running, restart it to apply the changes.
 claude
 ```
 
-That's it! You're now using MiniMax-M2.5 in Claude Code.
+That's it! You're now using MiniMax-M2.7 in Claude Code.
 
 ---
 
@@ -281,11 +281,11 @@ When you apply MiniMax configuration, these environment variables are set:
     "ANTHROPIC_AUTH_TOKEN": "<your-api-key>",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    "ANTHROPIC_MODEL": "MiniMax-M2.5",
-    "ANTHROPIC_SMALL_FAST_MODEL": "MiniMax-M2.5",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.5",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.5",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.5"
+    "ANTHROPIC_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_SMALL_FAST_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.7"
   }
 }
 ```
