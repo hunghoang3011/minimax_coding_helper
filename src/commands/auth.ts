@@ -15,6 +15,7 @@ import {
   enableMCP,
   disableMCP,
   isMCPEnabled,
+  tryClaudeMCPRemove,
   applyVSCodeExtensionConfig,
   removeVSCodeExtensionConfig,
   isVSCodeExtensionConfigured,
@@ -443,7 +444,10 @@ export async function authUnload(removeAll: boolean = false): Promise<void> {
     const mcpSpinner = createSpinner('Disabling MCP...');
     mcpSpinner.start();
     try {
-      await disableMCP();
+      const cliRemoved = await tryClaudeMCPRemove();
+      if (!cliRemoved) {
+        await disableMCP();
+      }
       mcpSpinner.succeed('MCP disabled!');
     } catch {
       mcpSpinner.warn('MCP was not enabled');

@@ -2,6 +2,10 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
 import * as yaml from 'js-yaml';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export interface MiniMaxConfig {
   api_key: string;
@@ -425,4 +429,13 @@ export async function removeVSCodeExtensionConfig(): Promise<void> {
 export async function isVSCodeExtensionConfigured(): Promise<boolean> {
   const settings = await loadVSCodeSettings();
   return !!(settings?.['claudeCode.selectedModel'] || settings?.['claudeCode.environmentVariables']);
+}
+
+export async function tryClaudeMCPRemove(): Promise<boolean> {
+  try {
+    await execAsync('claude mcp remove MiniMax');
+    return true;
+  } catch {
+    return false;
+  }
 }

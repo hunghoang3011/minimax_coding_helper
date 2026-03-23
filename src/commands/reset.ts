@@ -1,8 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import * as fs from 'fs-extra';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import {
   loadClaudeSettings,
   writeClaudeSettingsDirect,
@@ -10,14 +8,13 @@ import {
   loadVSCodeSettings,
   writeVSCodeSettingsDirect,
   disableMCP,
+  tryClaudeMCPRemove,
   getConfigDir,
   getClaudeSettingsPath,
   getClaudeJsonPath,
   getVSCodeSettingsPath
 } from '../utils/config.js';
 import { logger, createSpinner } from '../utils/logger.js';
-
-const execAsync = promisify(exec);
 
 const MINIMAX_ENV_KEYS = [
   'ANTHROPIC_BASE_URL',
@@ -211,9 +208,8 @@ async function executeResetPlan(plan: ResetAction[]): Promise<ResetResult[]> {
         }
 
         case 'remove-mcp': {
-          try {
-            await execAsync('claude mcp remove MiniMax');
-          } catch {
+          const cliRemoved = await tryClaudeMCPRemove();
+          if (!cliRemoved) {
             await disableMCP();
           }
           spinner.succeed(action.description);
