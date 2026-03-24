@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import {
   loadConfig,
   loadClaudeSettings,
@@ -36,7 +37,7 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
 
   try {
     const claudeSettings = await loadClaudeSettings();
-    if (claudeSettings?.env?.ANTHROPIC_BASE_URL) {
+    if (claudeSettings?.env?.ANTHROPIC_BASE_URL?.includes('minimax')) {
       applied = true;
     }
   } catch {
@@ -57,13 +58,31 @@ export async function runStatus(options: StatusOptions = {}): Promise<void> {
     return;
   }
 
+  const regionLabel = region === 'china' ? 'China' : 'International';
+
+  logger.blank();
   if (configured && applied) {
-    const regionLabel = region === 'china' ? 'China' : 'International';
-    const mcpLabel = mcp ? 'enabled' : 'disabled';
-    logger.success(`MiniMax active (${model || 'unknown'}, ${regionLabel}) — MCP: ${mcpLabel}`);
+    console.log(chalk.green.bold('  MINIMAX ACTIVE'));
   } else if (configured) {
-    logger.warning('MiniMax configured but not applied — run: mmhelper auth apply');
+    console.log(chalk.yellow.bold('  MINIMAX INACTIVE') + chalk.gray(' (configured but not applied)'));
   } else {
-    logger.error('MiniMax not configured — run: mmhelper init');
+    console.log(chalk.gray.bold('  MINIMAX NOT CONFIGURED'));
+  }
+  logger.blank();
+
+  console.log(chalk.cyan('  API Key:     ') + (configured ? chalk.green('Set') : chalk.red('Not set')));
+  console.log(chalk.cyan('  Claude Code: ') + (applied ? chalk.green('MiniMax applied') : chalk.gray('Default (Anthropic)')));
+  console.log(chalk.cyan('  Model:       ') + chalk.white(model || 'N/A'));
+  console.log(chalk.cyan('  Region:      ') + chalk.white(regionLabel));
+  console.log(chalk.cyan('  MCP:         ') + (mcp ? chalk.green('Enabled') : chalk.gray('Disabled')));
+  logger.blank();
+
+  // Actionable hint
+  if (!configured) {
+    console.log(chalk.gray('  Get started: mmhelper init'));
+  } else if (!applied) {
+    console.log(chalk.gray('  Activate: mmhelper on'));
+  } else {
+    console.log(chalk.gray('  Deactivate: mmhelper off'));
   }
 }

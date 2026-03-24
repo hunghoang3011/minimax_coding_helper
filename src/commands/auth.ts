@@ -8,6 +8,7 @@ import {
   removeConfig,
   loadClaudeSettings,
   saveClaudeSettings,
+  writeClaudeSettingsDirect,
   getClaudeEnvConfig,
   backupClaudeSettings,
   getConfigFile,
@@ -19,6 +20,7 @@ import {
   applyVSCodeExtensionConfig,
   removeVSCodeExtensionConfig,
   isVSCodeExtensionConfigured,
+  MINIMAX_ENV_KEYS,
   type MiniMaxConfig
 } from '../utils/config.js';
 import { logger, createSpinner } from '../utils/logger.js';
@@ -212,15 +214,9 @@ export async function authRevoke(keepSettings: boolean = false): Promise<void> {
 
     const claudeSettings = await loadClaudeSettings();
     if (claudeSettings?.env) {
-      delete claudeSettings.env.ANTHROPIC_BASE_URL;
-      delete claudeSettings.env.ANTHROPIC_AUTH_TOKEN;
-      delete claudeSettings.env.API_TIMEOUT_MS;
-      delete claudeSettings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
-      delete claudeSettings.env.ANTHROPIC_MODEL;
-      delete claudeSettings.env.ANTHROPIC_SMALL_FAST_MODEL;
-      delete claudeSettings.env.ANTHROPIC_DEFAULT_SONNET_MODEL;
-      delete claudeSettings.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
-      delete claudeSettings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
+      for (const key of MINIMAX_ENV_KEYS) {
+        delete claudeSettings.env[key];
+      }
       delete claudeSettings.model;
 
       // Clean up empty env object
@@ -228,7 +224,7 @@ export async function authRevoke(keepSettings: boolean = false): Promise<void> {
         delete claudeSettings.env;
       }
 
-      await saveClaudeSettings(claudeSettings);
+      await writeClaudeSettingsDirect(claudeSettings);
       logger.success('Claude Code settings restored.');
     }
 
@@ -414,22 +410,16 @@ export async function authUnload(removeAll: boolean = false): Promise<void> {
   try {
     const claudeSettings = await loadClaudeSettings();
     if (claudeSettings?.env) {
-      delete claudeSettings.env.ANTHROPIC_BASE_URL;
-      delete claudeSettings.env.ANTHROPIC_AUTH_TOKEN;
-      delete claudeSettings.env.API_TIMEOUT_MS;
-      delete claudeSettings.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
-      delete claudeSettings.env.ANTHROPIC_MODEL;
-      delete claudeSettings.env.ANTHROPIC_SMALL_FAST_MODEL;
-      delete claudeSettings.env.ANTHROPIC_DEFAULT_SONNET_MODEL;
-      delete claudeSettings.env.ANTHROPIC_DEFAULT_OPUS_MODEL;
-      delete claudeSettings.env.ANTHROPIC_DEFAULT_HAIKU_MODEL;
+      for (const key of MINIMAX_ENV_KEYS) {
+        delete claudeSettings.env[key];
+      }
       delete claudeSettings.model;
 
       if (claudeSettings.env && Object.keys(claudeSettings.env).length === 0) {
         delete claudeSettings.env;
       }
 
-      await saveClaudeSettings(claudeSettings);
+      await writeClaudeSettingsDirect(claudeSettings);
     }
 
     const vscodeSpinner = createSpinner('Removing VS Code extension configuration...');

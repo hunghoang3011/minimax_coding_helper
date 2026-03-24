@@ -32,6 +32,25 @@ export const DEFAULT_API_TIMEOUT = '3000000';
 export const DEFAULT_CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude');
 export const DEFAULT_VSCODE_SETTINGS_PATH = path.join(os.homedir(), '.vscode');
 
+// All env var keys set in ~/.claude/settings.json by MiniMax
+export const MINIMAX_ENV_KEYS = [
+  'ANTHROPIC_BASE_URL',
+  'ANTHROPIC_AUTH_TOKEN',
+  'API_TIMEOUT_MS',
+  'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+  'ANTHROPIC_MODEL',
+  'ANTHROPIC_SMALL_FAST_MODEL',
+  'ANTHROPIC_DEFAULT_SONNET_MODEL',
+  'ANTHROPIC_DEFAULT_OPUS_MODEL',
+  'ANTHROPIC_DEFAULT_HAIKU_MODEL'
+] as const;
+
+// Check whether MiniMax config is currently applied to Claude Code
+export async function isMiniMaxApplied(): Promise<boolean> {
+  const settings = await loadClaudeSettings();
+  return !!(settings?.env?.ANTHROPIC_BASE_URL?.includes('minimax'));
+}
+
 export function getConfigDir(): string {
   return CONFIG_DIR;
 }

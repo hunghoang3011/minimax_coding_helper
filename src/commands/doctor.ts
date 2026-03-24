@@ -304,12 +304,19 @@ async function checkApiConnectivity(): Promise<DoctorCheck> {
     }).catch(() => null);
 
     if (response) {
-      if (response.ok || response.status === 400 || response.status === 401) {
-        // 400/401 means the server is responding, just auth/quota issues
+      if (response.ok || response.status === 400) {
         return {
           name: 'API Connectivity',
           status: 'pass',
           message: 'MiniMax API is reachable'
+        };
+      }
+      if (response.status === 401) {
+        return {
+          name: 'API Connectivity',
+          status: 'warn',
+          message: 'MiniMax API is reachable but authentication failed (401)',
+          details: 'Check your API key: mmhelper auth show'
         };
       }
       return {

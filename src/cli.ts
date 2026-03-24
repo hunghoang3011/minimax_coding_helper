@@ -17,6 +17,7 @@ import { runDoctor } from './commands/doctor.js';
 import { configMenu } from './commands/config.js';
 import { runReset } from './commands/reset.js';
 import { runStatus } from './commands/status.js';
+import { quickOn, quickOff } from './commands/toggle.js';
 
 const program = new Command();
 
@@ -62,6 +63,31 @@ program
   .action(async (options) => {
     try {
       await runReset(options);
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+// Quick toggle commands
+program
+  .command('on')
+  .description('Activate MiniMax for Claude Code (instant, no prompts)')
+  .action(async () => {
+    try {
+      await quickOn();
+    } catch (error) {
+      console.error(chalk.red('Error:'), error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('off')
+  .description('Deactivate MiniMax, restore vanilla Claude Code (instant, no prompts)')
+  .action(async () => {
+    try {
+      await quickOff();
     } catch (error) {
       console.error(chalk.red('Error:'), error);
       process.exit(1);

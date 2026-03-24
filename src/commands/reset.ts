@@ -12,21 +12,10 @@ import {
   getConfigDir,
   getClaudeSettingsPath,
   getClaudeJsonPath,
-  getVSCodeSettingsPath
+  getVSCodeSettingsPath,
+  MINIMAX_ENV_KEYS
 } from '../utils/config.js';
 import { logger, createSpinner } from '../utils/logger.js';
-
-const MINIMAX_ENV_KEYS = [
-  'ANTHROPIC_BASE_URL',
-  'ANTHROPIC_AUTH_TOKEN',
-  'API_TIMEOUT_MS',
-  'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
-  'ANTHROPIC_MODEL',
-  'ANTHROPIC_SMALL_FAST_MODEL',
-  'ANTHROPIC_DEFAULT_SONNET_MODEL',
-  'ANTHROPIC_DEFAULT_OPUS_MODEL',
-  'ANTHROPIC_DEFAULT_HAIKU_MODEL'
-];
 
 export interface ResetOptions {
   dryRun?: boolean;

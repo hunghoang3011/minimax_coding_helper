@@ -1,7 +1,8 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import { authSet, authApply, authMCPEnable, authUnload } from './auth.js';
-import { loadConfig, saveConfig, isMCPEnabled, isVSCodeExtensionConfigured } from '../utils/config.js';
+import { authSet, authApply, authMCPEnable } from './auth.js';
+import { quickOn, quickOff } from './toggle.js';
+import { loadConfig, saveConfig, isMCPEnabled, isVSCodeExtensionConfigured, isMiniMaxApplied } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
 
 export async function runInitWizard(): Promise<void> {
@@ -79,6 +80,7 @@ export async function runDashboard(): Promise<void> {
     const maskedKey = config.api_key.slice(0, 4) + '****';
     const mcpEnabled = await isMCPEnabled();
     const vscodeEnabled = await isVSCodeExtensionConfigured();
+    const isApplied = await isMiniMaxApplied();
 
     logger.blank();
     console.log(chalk.cyan.bold('╔════════════════════════════════════════════════════════════╗'));
@@ -90,10 +92,23 @@ export async function runDashboard(): Promise<void> {
     console.log(chalk.cyan('  Model:       ') + chalk.white.bold(config.model || 'MiniMax-M2.7'));
     console.log(chalk.cyan('  Region:      ') + chalk.white.bold(config.region === 'international' ? '🌍 International' : '🇨🇳 China'));
     console.log(chalk.cyan('  API Key:     ') + chalk.green('Set (' + maskedKey + ')'));
-    console.log(chalk.cyan('  Claude Code: ') + chalk.green.bold('✅ Configured'));
+    console.log(chalk.cyan('  Claude Code: ') + (isApplied ? chalk.green.bold('✅ MiniMax Active') : chalk.yellow('⏸️  Inactive (vanilla Claude Code)')));
     console.log(chalk.cyan('  VS Code:     ') + (vscodeEnabled ? chalk.green.bold('✅ Configured') : chalk.gray('❌ Not Configured')));
     console.log(chalk.cyan('  MCP Status:  ') + (mcpEnabled ? chalk.green.bold('✅ Enabled') : chalk.gray('❌ Disabled')));
     logger.blank();
+
+    // Build context-aware toggle option
+    const toggleOption = isApplied
+      ? {
+          name: chalk.yellow('⏸️  Switch to vanilla Claude Code') + ' - ' + chalk.gray('Deactivate MiniMax (mmhelper off)'),
+          value: 'toggle-off',
+          short: 'Deactivate'
+        }
+      : {
+          name: chalk.green.bold('▶️  Activate MiniMax') + ' - ' + chalk.gray('Apply MiniMax config (mmhelper on)'),
+          value: 'toggle-on',
+          short: 'Activate'
+        };
 
     const { action } = await inquirer.prompt([
       {
@@ -101,16 +116,7 @@ export async function runDashboard(): Promise<void> {
         name: 'action',
         message: chalk.bold.cyan('Select action:'),
         choices: [
-          {
-            name: chalk.green('🔄 Refresh Configuration') + ' - ' + chalk.gray('Reapply MiniMax config to Claude Code'),
-            value: 'refresh',
-            short: 'Refresh'
-          },
-          {
-            name: chalk.red('🗑️  Unload Configuration') + ' - ' + chalk.gray('Remove MiniMax config from Claude Code'),
-            value: 'unload',
-            short: 'Unload'
-          },
+          toggleOption,
           {
             name: chalk.blue('🔌 MCP Configuration') + ' - ' + chalk.gray('Manage Model Context Protocol'),
             value: 'mcp',
@@ -127,11 +133,6 @@ export async function runDashboard(): Promise<void> {
             short: 'Change Region'
           },
           new inquirer.Separator(),
-          {
-            name: chalk.cyan.bold('▶️  Start Claude Code') + ' - ' + chalk.gray('Open a new terminal and run: claude'),
-            value: 'start-claude',
-            short: 'Start Claude'
-          },
           {
             name: chalk.red.bold('💣 Reset (Remove All)') + ' - ' + chalk.gray('Remove all MiniMax configuration'),
             value: 'reset',
@@ -150,11 +151,11 @@ export async function runDashboard(): Promise<void> {
     logger.blank();
 
     switch (action) {
-      case 'refresh':
-        await handleRefresh();
+      case 'toggle-on':
+        await handleToggleOn();
         continue;
-      case 'unload':
-        await handleUnload();
+      case 'toggle-off':
+        await handleToggleOff();
         continue;
       case 'mcp':
         await handleMCPMenu();
@@ -164,9 +165,6 @@ export async function runDashboard(): Promise<void> {
         continue;
       case 'change-region':
         await handleChangeRegion();
-        continue;
-      case 'start-claude':
-        await handleStartClaude();
         continue;
       case 'reset':
         await handleReset();
@@ -179,41 +177,23 @@ export async function runDashboard(): Promise<void> {
   }
 }
 
-async function handleRefresh(): Promise<void> {
+async function handleToggleOn(): Promise<void> {
   try {
-    await authApply();
-    logger.blank();
-    console.log(chalk.green('  ✅ Configuration refreshed successfully!'));
+    await quickOn();
     await promptContinue();
   } catch (error) {
-    console.log(chalk.red('  ❌ Failed to refresh configuration.'));
+    console.log(chalk.red('  ❌ Failed to activate MiniMax.'));
     console.log(chalk.gray('  Try: mmhelper doctor to check setup'));
     await promptContinue();
   }
 }
 
-async function handleUnload(): Promise<void> {
-  logger.blank();
-  console.log(chalk.yellow('  ⚠️  This will remove MiniMax configuration from Claude Code.'));
-  console.log(chalk.white('  Your saved API key will be kept for future use.'));
-  logger.blank();
-
-  const { confirm } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'confirm',
-      message: chalk.bold.yellow('Continue?'),
-      default: false
-    }
-  ]);
-
-  if (!confirm) return;
-
+async function handleToggleOff(): Promise<void> {
   try {
-    await authUnload();
+    await quickOff();
     await promptContinue();
   } catch (error) {
-    console.log(chalk.red('  ❌ Failed to unload configuration.'));
+    console.log(chalk.red('  ❌ Failed to deactivate MiniMax.'));
     console.log(chalk.gray('  Try: mmhelper reset to force clean'));
     await promptContinue();
   }
@@ -368,15 +348,6 @@ async function handleChangeRegion(): Promise<void> {
   }
 }
 
-async function handleStartClaude(): Promise<void> {
-  logger.blank();
-  console.log(chalk.cyan('  💡 To start Claude Code:'));
-  console.log(chalk.white('     1. Open a new terminal in your workspace'));
-  console.log(chalk.cyan('     2. Run: ') + chalk.white.bold('claude'));
-  logger.blank();
-  await promptContinue();
-}
-
 async function handleReset(): Promise<void> {
   const { runReset } = await import('./reset.js');
   await runReset();
@@ -386,10 +357,9 @@ async function handleReset(): Promise<void> {
 async function promptContinue(): Promise<void> {
   await inquirer.prompt([
     {
-      type: 'confirm',
+      type: 'input',
       name: 'continue',
-      message: 'Press Enter to continue...',
-      default: true
+      message: chalk.gray('Press Enter to continue...')
     }
   ]);
 }
